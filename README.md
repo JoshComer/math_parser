@@ -1,15 +1,16 @@
-# josh
-Josh's Own SHell
+# math_parser
 
-A shell for linux written by me, Josh. I really hate bash's syntax. As of right now, it's very simple, but I hope to eventually be able to replace bash with this for my own uses.
+A simple math parser written in c. It's based partially off of some parsing code I was writing for my own shell, so it's still a little messy in some places. My plan for this is simple
 
-The shell can execute commands with arguments (the size of a line it can process is currently limited to 1024 chars)
+1 - Remove the old code irrelevent to this parser
+2 - Extend functionality and refine existing design
+3 - Either create a primitive programming language, or resume work on my shell
 
-~ will be substituted with the HOME env var
-single quotes encapsulate string literals with no substitution (except single quotes of course, those must be escaped with \'. In the future maybe like bash strings next to each other will be concatenated)
-
-TODO: Add history which is accessible through history command or up arrow - as well as ctrl+l for clearing screen
-    will require changing the way input is gotten
+I don't anticipate working too much on this project specifically, but that could change
 
 
-chars which must be escaped: (){}[]=!~#
+# Running
+To compile, simply run 'make'
+To run the tests located in the tests directory, run 'make tests'
+    (The tests 
+
