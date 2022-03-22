@@ -1,0 +1,5 @@
+# this file is only here so the empty build directory can be part of the project
+
+*
+*/
+!.gitignore
