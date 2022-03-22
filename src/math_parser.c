@@ -22,28 +22,6 @@ lexer_token_t * lexer_token_t_new_empty()
 	return token;
 }
 
-
-lexer_token_t lexer_token_t_new_stack(char * str, int str_len)
-{
-	lexer_token_t token;
-
-	token.token_str = malloc((str_len * sizeof(char)) + 1);
-
-	if (token.token_str != NULL)
-	{
-		strcpy(token.token_str, str);
-		token.token_str_len = str_len;
-	}
-	else {
-		token.token_str_len = -1;
-	}
-
-	token.type = LEXER_TOKEN_T_INVALID_TOKEN;
-	token._must_free = false;
-
-	return token;
-}
-
 void lexer_token_t_free(lexer_token_t *token)
 {
 	if (token == NULL)
@@ -164,124 +142,6 @@ void ast_tree_free(ast_node_t * node)
 	}
 }
 
-// Parses source lexer_token_t into destination ast_node_t
-// Returns true if it was parsed, false if it didn't parse
-bool lexer_parse_keywords(ast_node_t * dest, lexer_token_t * src)
-{
-	if (src == NULL || dest == NULL)
-		return false;
-
-	
-	// looping
-	if 		(strcmp("while", src->token_str) == 0)
-	{
-		dest->type = AST_NODE_T_TYPE_KEYWORD;
-		dest->operation = JOSH_OPER_WHILE;
-		return true;
-	}
-	else if (strcmp("for", src->token_str) == 0)
-	{
-		dest->type = AST_NODE_T_TYPE_KEYWORD;
-		dest->operation = JOSH_OPER_FOR;
-		return true;
-	}
-
-	// if
-	else if (strcmp("if", src->token_str) == 0)
-	{
-		dest->type = AST_NODE_T_TYPE_KEYWORD;
-		dest->operation = JOSH_OPER_IF;
-		return true;
-	}
-
-	// didn't parse into one of the options
-	return false;
-}
-
-bool lexer_parse_string_literal(ast_node_t * dest, lexer_token_t * src)
-{
-	if (dest == NULL || src == NULL)
-		return false;
-
-	dest->type = AST_NODE_T_TYPE_STRING_LITERAL;
-
-	dest->str = malloc(src->token_str_len + 1);
-	strcpy(dest->str, src->token_str);
-
-	return true;
-}
-
-ast_node_t * lexer_tokens_to_ast_nodes(lexer_token_list_t * list)
-{
-	if (list->size <= 0)
-		return NULL;
-
-	ast_node_t * head = ast_node_t_new_empty();
-	ast_node_t * curr = head;
-
-	for (int i = 0; i < list->size; i++)
-	{
-		printf("%d:%s\n", i, list->tokens[i]->token_str);
-	}
-
-	for (int i = 0; i < list->size; i++)
-	{
-		lexer_token_t * token = list->tokens[i];
-		ast_node_t * new_node = ast_node_t_new_empty();
-
-		switch (token->type)
-		{
-			case LEXER_TOKEN_T_SPECIAL_CHAR:
-				if (lexer_parse_string_literal(new_node, token) == true)
-				{
-					// temp for testing
-					new_node->type = AST_NODE_T_TYPES_NUM_TYPES;
-
-					curr->r_child = new_node;
-					curr = new_node;
-					break;
-				}
-
-				exit(-98583); //error
-				break;
-			case LEXER_TOKEN_T_TEXT_TOKEN:
-				if (lexer_parse_keywords(new_node, token) == true)
-				{
-				}
-				else {
-					lexer_parse_string_literal(new_node, token);
-				}
-
-				curr->r_child = new_node;
-				curr = new_node;
-				break;
-			case LEXER_TOKEN_T_STRING_LITERAL:
-				if (lexer_parse_string_literal(new_node, token) == false)
-				{
-					exit(-343429); // error
-				}
-
-				printf("Added string %s\n", new_node->str);
-
-				curr->r_child = new_node;
-				curr = new_node;
-				break;
-				
-				break;
-			case LEXER_TOKEN_T_INVALID_TOKEN:
-			{
-				ast_tree_free(new_node);
-				ast_tree_free(head);
-				exit(-59897); // error
-				return NULL;
-			}
-		}
-
-	}
-
-	return head;
-}
-
 void _print_ast_node(ast_node_t * node)
 {
 	char type_str[50];
@@ -377,24 +237,6 @@ ast_node_t * ast_node_t_new(AST_NODE_T_TYPE type, JOSH_OPERATIONS operation, cha
 	return node;
 }
 
-//ast_node_t * parse_any(lexer_token_t * token, lexer_token_list_t * list)
-//{
-//	if (token == NULL || list == NULL)
-//		return NULL;
-//
-//	ast_node_t * new_node;
-//
-//	if (token == NULL || token->token_str_len <= 0)
-//		return NULL;
-//
-//	if (token->token_str[0] == '{')
-//		parse_block(token, list);
-//}
-//
-//ast_node_t * parse_block(lexer_token_t * token, lexer_token_list_t * list)
-//{
-//	
-//}
 
 ast_node_t * parse_matop(char * str)
 {
@@ -421,20 +263,6 @@ ast_node_t * parse_matop(char * str)
 		
     return NULL;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
