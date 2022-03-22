@@ -6,6 +6,12 @@
 #include <inttypes.h>
 #include <math.h>
 
+
+
+//////////////////////////////////////////////
+//       lexer_token_t type
+//////////////////////////////////////////////
+
 lexer_token_t * lexer_token_t_new_empty()
 {
 	lexer_token_t * token = malloc(sizeof(lexer_token_t));
@@ -17,10 +23,37 @@ lexer_token_t * lexer_token_t_new_empty()
 	token->token_str_len = -1;
 
 	token->type = LEXER_TOKEN_T_INVALID_TOKEN;
-	token->_must_free = true;
 
 	return token;
 }
+
+
+lexer_token_t * lexer_token_t_new(LEXER_TOKEN_T_TYPES type, char * str)
+{
+    if (str == NULL)
+    {
+        return NULL;
+    }
+
+	lexer_token_t * token = malloc(sizeof(lexer_token_t));
+	if (token == NULL)
+		return NULL;
+
+	token->token_str = malloc((strlen(str) * sizeof(char)) + sizeof(char));
+	if (token->token_str == NULL)
+	{
+		free(token);
+		return NULL;
+	}
+
+	strcpy(token->token_str, str);
+	token->token_str_len = strlen(str);
+
+	token->type = type;
+
+	return token;
+}
+
 
 void lexer_token_t_free(lexer_token_t *token)
 {
@@ -30,10 +63,50 @@ void lexer_token_t_free(lexer_token_t *token)
 	if (token->token_str != NULL)
 		free(token->token_str);
 
-	if (token->_must_free)
-		free(token);
+    free(token);
 }
 
+
+bool lexer_token_t_move(lexer_token_t * dest, lexer_token_t * src)
+{
+    // Moves data AND ownership from src to data. Src is freed after
+    // this function and should not be used. Dest can effectively be
+    // used in src's place
+
+    if (src == NULL || dest == NULL || dest->token_str != NULL)
+        return false;
+
+    // Create a valid dest to move data into
+    dest->token_str = malloc(strlen(src->token_str) * sizeof(char) + sizeof(char));
+    if (dest->token_str == NULL) 
+    {
+        free(dest);
+        return false;
+    }
+
+    // actually move the data into dest
+    dest->token_str_len = src->token_str_len;
+    dest->type = src->type;
+    strcpy(dest->token_str, src->token_str);
+    
+    free(src);
+
+    return true;
+}
+
+
+
+
+
+
+
+
+
+
+
+//////////////////////////////////////////////
+//       lexer_token_list_t type
+//////////////////////////////////////////////
 
 lexer_token_list_t * lexer_token_list_t_new()
 {
@@ -53,6 +126,7 @@ lexer_token_list_t * lexer_token_list_t_new()
 
 	return list;
 }
+
 
 void lexer_token_list_t_free(lexer_token_list_t * list)
 {
@@ -81,15 +155,25 @@ lexer_token_t * lexer_token_list_t_pop(lexer_token_list_t * list)
 	return list->tokens[list->size];
 }
 
-void lexer_token_t_set_type(lexer_token_t * token, LEXER_TOKEN_T_TYPES type)
-{
-	if (token == NULL)
-		return;
 
-	if (type <= _LEXER_TOKEN_T_TYPE_LOWER_BOUND && _LEXER_TOKEN_T_TYPE_UPPER_BOUND <= type)
-		token->type = LEXER_TOKEN_T_INVALID_TOKEN;
-	else
-		token->type = type;
+bool lexer_token_list_t_push_and_free_token(lexer_token_list_t * list, lexer_token_t * token)
+{
+    // Pushes data from token into list. Token is freed and should not be used afterwards
+
+	if (list == NULL || token == NULL || list->size >= list->_allocated)
+		return false;
+
+	list->tokens[list->size] = lexer_token_t_new_empty();
+
+	if ( ! lexer_token_t_move(list->tokens[list->size], token))
+    {
+        return false;
+    }
+    else
+    {
+        list->size++;
+        return true;
+    }
 }
 
 
@@ -103,6 +187,100 @@ void lexer_token_list_t_print_all(lexer_token_list_t * list)
 }
 
 
+
+
+
+
+
+
+
+
+
+//////////////////////////////////////////////
+//            Lexing Functions
+//////////////////////////////////////////////
+
+lexer_token_t * _parse_token(char * tok)
+{
+    int length = strlen(tok);
+    if (length == 1 && char_in_list(tok[0], "+-*/%^", 6))
+    {
+        return lexer_token_t_new(LEXER_TOKEN_T_MATOP, tok);
+    }
+    else if (length == 1 && char_in_list(tok[0], "()", 2))
+    {
+        return lexer_token_t_new(LEXER_TOKEN_T_PAREN, tok);
+    }
+    else
+    {
+        return lexer_token_t_new(LEXER_TOKEN_T_NUMBER, tok);
+    }
+}
+
+lexer_token_list_t * _tokenize_string(char * str)
+{
+    const char * SEPARATORS  = "+-*/%^()";
+    const int NUM_SEPARATORS = strlen(SEPARATORS);
+
+    if (str == NULL)
+        return NULL;
+
+    lexer_token_list_t * list = lexer_token_list_t_new();
+    jc_stack_t token_stack = jc_stack_t_new();
+
+    for (int i = 0; i < (int)strlen(str); i++)
+    {
+        //printf("Looping. Size is %d with str of %s and char is %c\n", token_stack.size, token_stack.buffer, str[i]);
+        if ( isspace(str[i]) && token_stack.size != 0)
+        {
+            lexer_token_list_t_push_and_free_token(list, _parse_token(token_stack.buffer));
+            jc_stack_t_reset(&token_stack);
+        }
+        else if (char_in_list(str[i], SEPARATORS, NUM_SEPARATORS))
+        {
+            // create a token with already collected chars. We can separate tokens on special chars without spaces
+            if (token_stack.size != 0)
+            {
+                lexer_token_list_t_push_and_free_token(list, _parse_token(token_stack.buffer));
+                jc_stack_t_reset(&token_stack);
+            }
+
+            jc_stack_t_push(&token_stack, str[i]);
+            lexer_token_list_t_push_and_free_token(list, _parse_token(token_stack.buffer));
+            jc_stack_t_reset(&token_stack);
+        }
+        else
+        {
+            if ( ! isspace(str[i]) )
+                jc_stack_t_push(&token_stack, str[i]);
+        }
+    }
+
+    if (token_stack.size > 0)
+    {
+        lexer_token_list_t_push_and_free_token(list, _parse_token(token_stack.buffer));
+    }
+
+    if (list->size > 0)
+        list->index = 0;
+
+    return list;
+}
+
+
+
+
+
+
+
+
+
+
+
+//////////////////////////////////////////////
+//             ast_node_t type
+//////////////////////////////////////////////
+
 ast_node_t * ast_node_t_new_empty()
 {
 	ast_node_t * node = malloc(sizeof(ast_node_t));
@@ -115,8 +293,40 @@ ast_node_t * ast_node_t_new_empty()
 
 	node->str = NULL;
 
-	node->operation = JOSH_INVALID_OPER;
+	node->operation = PARSER_INVALID_OPER;
 	node->type = AST_NODE_T_TYPE_INVALID_TYPE;
+
+	return node;
+}
+
+
+ast_node_t * ast_node_t_new(AST_NODE_T_TYPE type, PARSER_OPERATIONS operation, char * str)
+{
+    // create new ast_node_t
+	ast_node_t * node = ast_node_t_new_empty();
+	if (node == NULL)
+		return NULL;
+	
+	node->str = malloc(strlen(str) + 1);
+	if (node->str == NULL)
+		return NULL;
+	
+    // copy data
+	strcpy(node->str, str);
+	node->type = type;
+	node->operation = operation;
+    
+    // set precedence level for order of operations
+    if (operation == PARSER_OPER_ADD || operation == PARSER_OPER_SUB)
+        node->precedence = AST_PRECEDENCE_ADD_SUB;
+    else if (operation == PARSER_OPER_MUL || operation == PARSER_OPER_DIV || operation == PARSER_OPER_MOD)
+        node->precedence = AST_PRECEDENCE_MUL_DIV_MOD;
+    else if (operation == PARSER_OPER_EXP)
+        node->precedence = AST_PRECEDENCE_EXP;
+    else
+    {
+        node->precedence = AST_PRECEDENCE_INVALID;
+    }
 
 	return node;
 }
@@ -142,6 +352,55 @@ void ast_tree_free(ast_node_t * node)
 	}
 }
 
+
+void ast_node_t_set_l_child(ast_node_t * parent, ast_node_t * l_child)
+{
+    if (parent == NULL || l_child == NULL)
+        return;
+
+    parent->l_child = l_child;
+    l_child->parent = parent;
+}
+
+
+void ast_node_t_set_r_child(ast_node_t * parent, ast_node_t * r_child)
+{
+    if (parent == NULL || r_child == NULL)
+        return;
+
+    parent->r_child = r_child;
+    r_child->parent = parent;
+}
+
+
+ast_node_t * find_tree_head(ast_node_t * node)
+{
+    if (node == NULL)
+        return node;
+
+    while(node->parent != NULL)
+        node = node->parent;
+
+    return node;
+}
+
+
+ast_node_t * find_highest_node_with_precedence(ast_node_t * node, AST_PRECEDENCE precedence)
+{
+    // We look for the highest node in the tree with lesser or equal precedence to that passed in
+    // Return either the highest node which matches our conditions, or return the head
+    if (node == NULL)
+        return NULL;
+
+    while (node->parent != NULL && node->precedence > precedence)
+    {
+        node = node->parent;
+    }
+
+    return node;
+}
+
+
 void _print_ast_node(ast_node_t * node)
 {
 	char type_str[50];
@@ -157,15 +416,6 @@ void _print_ast_node(ast_node_t * node)
 	{
 		case AST_NODE_T_TYPE_INVALID_TYPE:
 			strcpy(type_str, "AST_NODE_T_TYPE_INVALID_TYPE");
-			break;
-		case AST_NODE_T_TYPE_KEYWORD:
-			strcpy(type_str, "AST_NODE_T_TYPE_KEYWORD");
-			break;
-		case AST_NODE_T_TYPE_STRING_LITERAL:
-			strcpy(type_str, "AST_NODE_T_TYPE_STRING_LITERAL");
-			break;
-		case AST_NODE_T_TYPE_TEXT:
-			strcpy(type_str, "AST_NODE_T_TYPE_TEXT");
 			break;
 		case AST_NODE_T_TYPES_NUM_TYPES:
 			strcpy(type_str, "AST_NODE_T_TYPES_NUM_TYPES");
@@ -209,231 +459,52 @@ void ast_tree_print(ast_node_t * head)
 }
 
 
-ast_node_t * ast_node_t_new(AST_NODE_T_TYPE type, JOSH_OPERATIONS operation, char * str)
-{
-	ast_node_t * node = ast_node_t_new_empty();
-	if (node == NULL)
-		return NULL;
-	
-	node->type = type;
-	node->operation = operation;
-    
-    if (operation == JOSH_OPER_ADD || operation == JOSH_OPER_SUB)
-        node->precedence = AST_PRECEDENCE_ADD_SUB;
-    else if (operation == JOSH_OPER_MUL || operation == JOSH_OPER_DIV || operation == JOSH_OPER_MOD)
-        node->precedence = AST_PRECEDENCE_MUL_DIV_MOD;
-    else
-    {
-        node->precedence = AST_PRECEDENCE_INVALID;
-    }
 
-	node->str = malloc(strlen(str) + 1);
-	
-	if (node->str == NULL)
-		return NULL;
-	
-	strcpy(node->str, str);
 
-	return node;
-}
 
+
+
+
+
+
+
+//////////////////////////////////////////////
+//       AST Implementation Functions
+//////////////////////////////////////////////
 
 ast_node_t * parse_matop(char * str)
 {
 	if (str == NULL)
 		return NULL;
 
-    //printf("Converting matop %s\n", str);
-
 	switch (str[0])
 	{
 		case '+':
-			return ast_node_t_new(AST_NODE_T_TYPE_MATOP, JOSH_OPER_ADD, str);
+			return ast_node_t_new(AST_NODE_T_TYPE_MATOP, PARSER_OPER_ADD, str);
 		case '-':
-			return ast_node_t_new(AST_NODE_T_TYPE_MATOP, JOSH_OPER_SUB, str);
+			return ast_node_t_new(AST_NODE_T_TYPE_MATOP, PARSER_OPER_SUB, str);
 		case '*':
-			return ast_node_t_new(AST_NODE_T_TYPE_MATOP, JOSH_OPER_MUL, str);
+			return ast_node_t_new(AST_NODE_T_TYPE_MATOP, PARSER_OPER_MUL, str);
 		case '/':
-			return ast_node_t_new(AST_NODE_T_TYPE_MATOP, JOSH_OPER_DIV, str);
+			return ast_node_t_new(AST_NODE_T_TYPE_MATOP, PARSER_OPER_DIV, str);
 		case '%':
-			return ast_node_t_new(AST_NODE_T_TYPE_MATOP, JOSH_OPER_MOD, str);
+			return ast_node_t_new(AST_NODE_T_TYPE_MATOP, PARSER_OPER_MOD, str);
         case '^':
-            return ast_node_t_new(AST_NODE_T_TYPE_MATOP, JOSH_OPER_EXP, str);
+            return ast_node_t_new(AST_NODE_T_TYPE_MATOP, PARSER_OPER_EXP, str);
 	}
 		
     return NULL;
 }
 
 
-
-
-
-lexer_token_t * lexer_token_t_new(LEXER_TOKEN_T_TYPES type, char * str)
-{
-    if (str == NULL)
-    {
-        return NULL;
-    }
-
-	lexer_token_t * token = malloc(sizeof(lexer_token_t));
-	if (token == NULL)
-		return NULL;
-
-	token->token_str = malloc((strlen(str) * sizeof(char)) + sizeof(char));
-	if (token->token_str == NULL)
-	{
-		free(token);
-		return NULL;
-	}
-
-	strcpy(token->token_str, str);
-	token->token_str_len = strlen(str);
-
-	token->type = type;
-	token->_must_free = true;
-
-	return token;
-}
-
-
-bool lexer_token_t_move(lexer_token_t * dest, lexer_token_t * src)
-{
-    if (src == NULL || dest == NULL || dest->token_str != NULL)
-        return false;
-
-    dest->token_str = malloc(strlen(src->token_str) * sizeof(char) + sizeof(char));
-    if (dest->token_str == NULL) { free(dest); return NULL; }
-
-    dest->token_str_len = src->token_str_len;
-    dest->type = src->type;
-    dest->_must_free = src->_must_free;
-    
-    strcpy(dest->token_str, src->token_str);
-    free(src);
-
-    return true;
-}
-
-
-bool lexer_token_list_t_push_and_move_token(lexer_token_list_t * list, lexer_token_t * token)
-{
-	if (list == NULL || token == NULL || list->size >= list->_allocated)
-		return false;
-
-	list->tokens[list->size] = lexer_token_t_new_empty();
-
-	if ( ! lexer_token_t_move(list->tokens[list->size], token))
-    {
-        return false;
-    }
-    else
-    {
-        list->size++;
-        return true;
-    }
-}
-
-
-lexer_token_t * _parse_token(char * tok)
-{
-    //printf("bruh the stack is %s\n", tok);
-    int length = strlen(tok);
-    if (length == 1 && char_in_list(tok[0], "+-*/%^", 6))
-    {
-        return lexer_token_t_new(LEXER_TOKEN_T_MATOP, tok);
-    }
-    else if (length == 1 && char_in_list(tok[0], "()", 2))
-    {
-        return lexer_token_t_new(LEXER_TOKEN_T_PAREN, tok);
-    }
-    else
-    {
-        return lexer_token_t_new(LEXER_TOKEN_T_NUMBER, tok);
-    }
-}
-
-
-lexer_token_list_t * _tokenize_string(char * str)
-{
-    const char * SEPARATORS  = "+-*/%^()";
-    const int NUM_SEPARATORS = strlen(SEPARATORS);
-
-    if (str == NULL)
-        return NULL;
-
-    lexer_token_list_t * list = lexer_token_list_t_new();
-    jc_stack_t token_stack = jc_stack_t_new();
-
-    for (int i = 0; i < (int)strlen(str); i++)
-    {
-        //printf("Looping. Size is %d with str of %s and char is %c\n", token_stack.size, token_stack.buffer, str[i]);
-        if ( isspace(str[i]) && token_stack.size != 0)
-        {
-            lexer_token_list_t_push_and_move_token(list, _parse_token(token_stack.buffer));
-            jc_stack_t_reset(&token_stack);
-        }
-        else if (char_in_list(str[i], SEPARATORS, NUM_SEPARATORS))
-        {
-            // create a token with already collected chars. We can separate tokens on special chars without spaces
-            if (token_stack.size != 0)
-            {
-                lexer_token_list_t_push_and_move_token(list, _parse_token(token_stack.buffer));
-                jc_stack_t_reset(&token_stack);
-            }
-
-            jc_stack_t_push(&token_stack, str[i]);
-            lexer_token_list_t_push_and_move_token(list, _parse_token(token_stack.buffer));
-            jc_stack_t_reset(&token_stack);
-        }
-        else
-        {
-            if ( ! isspace(str[i]) )
-                jc_stack_t_push(&token_stack, str[i]);
-        }
-    }
-
-    if (token_stack.size > 0)
-    {
-        lexer_token_list_t_push_and_move_token(list, _parse_token(token_stack.buffer));
-    }
-
-    if (list->size > 0)
-        list->index = 0;
-
-    return list;
-}
-
-
-ast_node_t * find_tree_head(ast_node_t * node)
-{
-    if (node == NULL)
-        return node;
-
-    while(node->parent != NULL)
-        node = node->parent;
-
-    return node;
-}
-
-
-ast_node_t * find_highest_node_with_precedence(ast_node_t * node, AST_PRECEDENCE precedence)
-{
-    // We look for the highest node in the tree with lesser or equal precedence to that passed in
-    // Return either the highest node which matches our conditions, or return the head
-    if (node == NULL)
-        return NULL;
-
-    while (node->parent != NULL && node->precedence > precedence)
-    {
-        node = node->parent;
-    }
-
-    return node;
-}
-
+// prototype so the two functions can refer to each other
 ast_node_t * _parse_tokens_to_ast_tree(lexer_token_list_t * list);
 ast_node_t * _parse_token_to_ast_node(lexer_token_list_t * list)
 {
+    // parse a single lexer token into an ast node
+    // in the case of parenthasis though, it's parsed
+    // as a separate ast tree, and the head of the tree is returned
+
     if (list == NULL || list->size <= 0 || list->index < 0 || list->index >= list->size)
 		return NULL;
 
@@ -449,7 +520,7 @@ ast_node_t * _parse_token_to_ast_node(lexer_token_list_t * list)
             else // Try to parse 
                 return NULL;
         case LEXER_TOKEN_T_NUMBER:
-            return ast_node_t_new(AST_NODE_T_TYPE_NUMBER, JOSH_INVALID_OPER, check_token->token_str);
+            return ast_node_t_new(AST_NODE_T_TYPE_NUMBER, PARSER_INVALID_OPER, check_token->token_str);
         case LEXER_TOKEN_T_MATOP:
             return parse_matop(check_token->token_str);
     }
@@ -457,49 +528,36 @@ ast_node_t * _parse_token_to_ast_node(lexer_token_list_t * list)
     return NULL;
 }
 
-
 ast_node_t * _parse_tokens_to_ast_tree(lexer_token_list_t * list)
 {
 	if (list == NULL || list->size <= 0 || list->index < 0 || list->index > list->size)
 		return NULL;
     
-    //printf("List:%d:%d:%s\n", list->size, list->index, list->tokens[list->index]->token_str);
-    
     // Set up the initial operations to start our tree
-    // Loop is for any additional operations
     // anchor is the head of the previous node trio which was created
     ast_node_t * temp = _parse_token_to_ast_node(list);
     ast_node_t * anchor = _parse_token_to_ast_node(list);
     
-    if (anchor == NULL)
+    if (anchor == NULL) // End of parsing string or ')' was reached. Return everything gotten so far
         return temp;
     
-    anchor->l_child = temp;
-    temp->parent = anchor;
-    
-    anchor->r_child = _parse_token_to_ast_node(list);
-    anchor->r_child->parent = anchor;
+    ast_node_t_set_l_child(anchor, temp);
+    ast_node_t_set_r_child(anchor, _parse_token_to_ast_node(list));
 
 	while (list->index < list->size)
 	{
         ast_node_t * op = _parse_token_to_ast_node(list);
         if (op == NULL) // right parenthasis encountered. Go back up a recursion level
             return anchor;
-        //printf("Looping. Op is %s\n", op->str);
+        
+        ast_node_t_set_r_child(op, _parse_token_to_ast_node(list));
 
-        op->r_child = _parse_token_to_ast_node(list);
-        op->r_child->parent = op;
-
-        //printf("new op is %s\n", new_op->str);
         if (op->precedence > anchor->precedence)
         {
             // the result of op takes the place of anchor->r_child
             // anchor instead uses the previous num from op->r_child as one operand
-            op->l_child = anchor->r_child;
-            op->l_child->parent = op;
-            
-            anchor->r_child = op;
-            op->parent = anchor;
+            ast_node_t_set_l_child(op, anchor->r_child);
+            ast_node_t_set_r_child(anchor, op);
             
             anchor = op;
         }
@@ -507,28 +565,19 @@ ast_node_t * _parse_tokens_to_ast_tree(lexer_token_list_t * list)
         {
             // Move up the tree to find where to insert the next operation.
             ast_node_t * replace = find_highest_node_with_precedence(anchor, op->precedence);
-            // Whatever operation result would have been there will be the l_child
-            // of the next operation
-            //printf("replace is %s with l child of %s\n", replace->str, replace->l_child->str);
+
+            // move op into replace's position in the tree
             if (replace->parent == NULL)
-                op->parent = replace->parent;
+                op->parent = NULL;
             else if (replace->parent->l_child == replace)
-            {
-                op->parent = replace->parent;
-                op->parent->l_child = op;
-            }
+                ast_node_t_set_l_child(replace->parent, op);
             else
-            {
-                op->parent = replace->parent;
-                op->parent->r_child = op;
-            }
+                ast_node_t_set_r_child(replace->parent, op);
 
-            op->l_child = replace;
-            replace->parent = op;
+            // Move replace underneath op as an operand to its operation
+            ast_node_t_set_l_child(op, replace);
 
-            //printf("Added new r child after replacing. Is %s\n", new_op->r_child->str);
             anchor = op;
-            //printf("l_child of anchor to head is %s\n", find_tree_head(anchor)->str);
         }
 	}
 
@@ -536,29 +585,42 @@ ast_node_t * _parse_tokens_to_ast_tree(lexer_token_list_t * list)
 }
 
 
+
+
+
+
+
+
+
+
+
+//////////////////////////////////////////////
+//        Math Evaluation Functions
+//////////////////////////////////////////////
+
 int _math_eval_recurse(ast_node_t * node)
 {
     if (node == NULL || node->type == AST_NODE_T_TYPE_INVALID_TYPE)
-        return -424242;
+        return -424242; // magic number
 
     if (node->type == AST_NODE_T_TYPE_NUMBER)
-        return strtoimax(node->str, NULL, 10);
+        return strtoimax(node->str, NULL, 10); // TODO: Detect overflow or underflow
 
     if (node->type == AST_NODE_T_TYPE_MATOP)
     {
         switch (node->operation)
-        {
-            case JOSH_OPER_ADD:
+        {   // TODO: Detect overflow or underflow
+            case PARSER_OPER_ADD:
                 return _math_eval_recurse(node->l_child) + _math_eval_recurse(node->r_child);
-            case JOSH_OPER_SUB:
+            case PARSER_OPER_SUB:
                 return _math_eval_recurse(node->l_child) - _math_eval_recurse(node->r_child);
-            case JOSH_OPER_MUL:
+            case PARSER_OPER_MUL:
                 return _math_eval_recurse(node->l_child) * _math_eval_recurse(node->r_child);
-            case JOSH_OPER_DIV:
+            case PARSER_OPER_DIV:
                 return _math_eval_recurse(node->l_child) / _math_eval_recurse(node->r_child);
-            case JOSH_OPER_MOD:
+            case PARSER_OPER_MOD:
                 return _math_eval_recurse(node->l_child) % _math_eval_recurse(node->r_child);
-            case JOSH_OPER_EXP:
+            case PARSER_OPER_EXP:
                 return pow(_math_eval_recurse(node->l_child), _math_eval_recurse(node->r_child));
             default:
                 return -424242;
@@ -577,7 +639,4 @@ int math_eval(char * str)
 
     return _math_eval_recurse(tree_head);
 }
-
-
-
 
