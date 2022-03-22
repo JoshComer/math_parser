@@ -353,7 +353,7 @@ lexer_token_t * _parse_token(char * tok)
 }
 
 
-lexer_token_list_t * _parse_tokenize(char * str)
+lexer_token_list_t * _tokenize_string(char * str)
 {
     const char * SEPARATORS  = "+-*/%^()";
     const int NUM_SEPARATORS = strlen(SEPARATORS);
@@ -403,15 +403,6 @@ lexer_token_list_t * _parse_tokenize(char * str)
     return list;
 }
 
-ast_node_t * parse(char * str)
-{
-    lexer_token_list_t * token_list = _parse_tokenize(str);
-    if (token_list == NULL)
-        return NULL;
-
-    return ast_node_t_new_empty();
-}
-
 
 ast_node_t * find_tree_head(ast_node_t * node)
 {
@@ -425,7 +416,7 @@ ast_node_t * find_tree_head(ast_node_t * node)
 }
 
 
-ast_node_t * find_tree_highest_of_precedence(ast_node_t * node, AST_PRECEDENCE precedence)
+ast_node_t * find_highest_node_with_precedence(ast_node_t * node, AST_PRECEDENCE precedence)
 {
     // We look for the highest node in the tree with lesser or equal precedence to that passed in
     // Return either the highest node which matches our conditions, or return the head
@@ -515,7 +506,7 @@ ast_node_t * _parse_tokens_to_ast_tree(lexer_token_list_t * list)
         else
         {
             // Move up the tree to find where to insert the next operation.
-            ast_node_t * replace = find_tree_highest_of_precedence(anchor, op->precedence);
+            ast_node_t * replace = find_highest_node_with_precedence(anchor, op->precedence);
             // Whatever operation result would have been there will be the l_child
             // of the next operation
             //printf("replace is %s with l child of %s\n", replace->str, replace->l_child->str);
@@ -580,7 +571,7 @@ int _math_eval_recurse(ast_node_t * node)
 
 int math_eval(char * str)
 {
-    lexer_token_list_t * list = _parse_tokenize(str);
+    lexer_token_list_t * list = _tokenize_string(str);
     ast_node_t * tree_head = _parse_tokens_to_ast_tree(list);
     lexer_token_list_t_free(list);
 
