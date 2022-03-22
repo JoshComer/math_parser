@@ -469,7 +469,7 @@ void ast_tree_print(ast_node_t * head)
 
 
 //////////////////////////////////////////////
-//       AST Implementation Functions
+//         AST Generation Functions
 //////////////////////////////////////////////
 
 ast_node_t * parse_matop(char * str)

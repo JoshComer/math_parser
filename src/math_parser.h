@@ -31,6 +31,12 @@ bool lexer_token_t_move(lexer_token_t * dest, lexer_token_t * src);
 void lexer_token_t_free(lexer_token_t * token);
 
 
+
+
+
+
+
+
 #define _JOSH_TOKEN_LIST_T_SIZE 1024
 typedef struct lexer_token_list_t{
 	lexer_token_t * tokens[_JOSH_TOKEN_LIST_T_SIZE];
@@ -44,11 +50,15 @@ typedef struct lexer_token_list_t{
 lexer_token_list_t * lexer_token_list_t_new();
 void lexer_token_list_t_free(lexer_token_list_t * list);
 
-bool lexer_token_list_t_push_copy(lexer_token_list_t * list, LEXER_TOKEN_T_TYPES type, char * string);
-bool lexer_token_list_t_push_and_move_token(lexer_token_list_t * list, lexer_token_t * token);
+bool lexer_token_list_t_push_and_free_token(lexer_token_list_t * list, lexer_token_t * token);
 lexer_token_t * lexer_token_list_t_pop(lexer_token_list_t * list);
 
 void lexer_token_list_t_print_all(lexer_token_list_t * list);
+
+
+
+
+
 
 
 typedef enum AST_NODE_T_TYPE
@@ -106,10 +116,14 @@ void ast_node_t_set_r_child(ast_node_t * parent, ast_node_t * r_child);
 
 void ast_tree_print(ast_node_t * head);
 
+
+
+
+
+
+
+
 int math_eval(char * str);
-
-
-
 
 
 #endif
