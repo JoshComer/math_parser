@@ -637,6 +637,9 @@ int math_eval(char * str)
     ast_node_t * tree_head = _parse_tokens_to_ast_tree(list);
     lexer_token_list_t_free(list);
 
-    return _math_eval_recurse(tree_head);
+    int computed_result = _math_eval_recurse(tree_head);
+    ast_tree_free(tree_head);
+
+    return computed_result;
 }
 
