@@ -17,6 +17,8 @@ bool char_in_list(const char compare, char const * const delimiters, const int n
 char * get_home_str();
 void print_bool_array(bool * arr, int size, bool newline);
 
+char* itoa(int value, char* result, int base); // released under gpl3
+
 
 // -------------
 // string_list_t
