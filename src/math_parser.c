@@ -6,6 +6,48 @@
 #include <inttypes.h>
 #include <math.h>
 
+// ----------------------------------------
+// Set global variables and error functions
+// ----------------------------------------
+
+#define _ERR_STR_BUFF_SIZE 101
+int _NUM_ERRS = 0;
+char _ERR_STR[_ERR_STR_BUFF_SIZE];
+
+void set_global_err(char * err_str)
+{
+    if (err_str == NULL)
+        return;
+
+    _NUM_ERRS++;
+
+    // Copy the error string over into global pointer
+    strncpy(_ERR_STR, err_str, _ERR_STR_BUFF_SIZE - 1);
+    _ERR_STR[_ERR_STR_BUFF_SIZE - 1] = '\0';
+}
+
+bool is_global_err()
+{
+    return _NUM_ERRS != 0;
+}
+
+void print_global_err()
+{
+    printf("%s\n", _ERR_STR);
+}
+
+void reset_global_err()
+{
+    _NUM_ERRS = 0;
+}
+
+
+
+
+
+
+
+
 
 
 //////////////////////////////////////////////
@@ -601,7 +643,10 @@ ast_node_t * _parse_tokens_to_ast_tree(lexer_token_list_t * list)
 int _math_eval_recurse(ast_node_t * node)
 {
     if (node == NULL || node->type == AST_NODE_T_TYPE_INVALID_TYPE)
-        return -424242; // magic number
+    {
+        set_global_err("Error: Encountered a NULL node or INVALID AST NODE TYPE when math_eval_recursing");
+        return -424242;
+    }
 
     if (node->type == AST_NODE_T_TYPE_NUMBER)
         return strtoimax(node->str, NULL, 10); // TODO: Detect overflow or underflow
@@ -617,7 +662,19 @@ int _math_eval_recurse(ast_node_t * node)
             case PARSER_OPER_MUL:
                 return _math_eval_recurse(node->l_child) * _math_eval_recurse(node->r_child);
             case PARSER_OPER_DIV:
-                return _math_eval_recurse(node->l_child) / _math_eval_recurse(node->r_child);
+                int dividend = _math_eval_recurse(node->l_child);
+                int divisor = _math_eval_recurse(node->r_child);
+
+                if (divisor == 0)
+                {
+                    set_global_err("Error: Attempted divide by 0 encountered");
+                    return -424242;
+                }
+                else
+                {
+                    return dividend / divisor;
+                }
+
             case PARSER_OPER_MOD:
                 return _math_eval_recurse(node->l_child) % _math_eval_recurse(node->r_child);
             case PARSER_OPER_EXP:

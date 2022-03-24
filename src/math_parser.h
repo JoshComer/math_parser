@@ -150,6 +150,25 @@ parser_hist_entry_t get_hist_entry_by_index(parser_history_t * hist, int index);
 parser_hist_entry_t get_hist_entry_by_offset(parser_history_t * hist, int offset);
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void set_global_err(char * err_str);
+bool is_global_err();
+void print_global_err();
+void reset_global_err();
+
 int math_eval(char * str);
 
 

@@ -15,6 +15,7 @@ void replace_dollars_with_hist_vals(char * str)
 
 typedef enum PARSER_ACTION
 {
+    NEWLINE,
     HIST,
     EVAL
 } PARSER_ACTION;
@@ -22,7 +23,9 @@ typedef enum PARSER_ACTION
 
 PARSER_ACTION get_parser_action(char * input)
 {
-    if (strcmp(input, "hist\n") == 0)
+    if (strlen(input) == 1)
+        return NEWLINE;
+    else if (strcmp(input, "hist\n") == 0)
         return HIST;
     else
         return EVAL;
@@ -38,23 +41,37 @@ int main(int argc, char * argv[])
     {
         PARSER_ACTION action = get_parser_action(buffer);
 
-        if (action == HIST)
+        if (action == NEWLINE)
+        {
+            // do nothing
+        }
+        else if (action == HIST)
         {
             for(int i = 0; i < hist->_size_filled; i++)
             {
                 parser_hist_entry_t entry = hist->hist_entries[(hist->_start_idx + i) % PARSER_HISTORY_SIZE];
                 printf("%d: %d = %s", hist->last_entry_num - hist->_size_filled + i + 1, entry.computed_result, entry.input_str);
             }
+            putchar('\n');
         }
         else if (action == EVAL)
         {
-            int result = math_eval(buffer);
-            parser_history_t_push(hist, buffer, result);
-            printf("%d\n", math_eval(buffer));
+            int computed_result = math_eval(buffer);
+
+            if (is_global_err())
+            {
+                print_global_err();
+                reset_global_err();
+            }
+            else
+            {
+                parser_history_t_push(hist, buffer, computed_result);
+                printf("%d\n\n", math_eval(buffer));
+            }
         }
         else
         {
-            printf("Error: Uncoded action encountered\n");
+            printf("Error: Uncoded action encountered\n\n");
             break;
         }
     }
