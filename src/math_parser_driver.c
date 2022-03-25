@@ -1,3 +1,5 @@
+#include <gmp.h>
+
 #include "math_parser.h"
 
 
@@ -52,11 +54,13 @@ int main(int argc, char * argv[])
                 parser_hist_entry_t entry = hist->hist_entries[(hist->_start_idx + i) % PARSER_HISTORY_SIZE];
                 printf("%d: %d = %s", hist->last_entry_num - hist->_size_filled + i + 1, entry.computed_result, entry.input_str);
             }
-            putchar('\n');
         }
         else if (action == EVAL)
         {
-            int computed_result = math_eval(buffer);
+            mpz_t computed_result; // gmp integer type
+            mpz_init(computed_result);
+
+            int eval_err = math_eval(computed_result, buffer);
 
             if (is_global_err())
             {
@@ -65,15 +69,19 @@ int main(int argc, char * argv[])
             }
             else
             {
-                parser_history_t_push(hist, buffer, computed_result);
-                printf("%d\n\n", math_eval(buffer));
+                parser_history_t_push(hist, buffer, eval_err);
+                mpz_out_str(stdout, 10, computed_result);
+                putchar('\n');
             }
         }
         else
         {
-            printf("Error: Uncoded action encountered\n\n");
+            printf("Error: Uncoded action encountered\n");
             break;
         }
+
+        // Blank line between output and next line
+        putchar('\n');
     }
 
     parser_history_t_free(hist);

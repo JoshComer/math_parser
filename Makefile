@@ -3,6 +3,7 @@
 CC = gcc
 # no unused parameter suppresses the unused parameter warnings
 CFLAGS = -Wall -Wextra -Wcast-align -g -Wno-unused-parameter
+LFLAGS = -lm -lgmp
 SRC_INCLUDE = -Isrc
 
 BUILD_DIR = build
@@ -22,7 +23,7 @@ all: math_parser
 
 
 math_parser: $(SRC_DIR)/math_parser_driver.c math_parser.o
-	$(CC) $(CFLAGS) $(SRC_DIR)/math_parser_driver.c $(BUILD_DIR)/math_parser.o $(BUILD_DIR)/jc_util.o -o math_parser -lm	
+	$(CC) $(CFLAGS) $(SRC_DIR)/math_parser_driver.c $(BUILD_DIR)/math_parser.o $(BUILD_DIR)/jc_util.o $(LFLAGS) -o math_parser
 
 math_parser.o: $(SRC_DIR)/math_parser.c $(SRC_DIR)/math_parser.h jc_util.o
 	$(CC) $(CFLAGS) -c $(SRC_DIR)/math_parser.c -o $(BUILD_DIR)/math_parser.o
@@ -44,7 +45,7 @@ jc_util_tests: $(TESTS_DIR)/jc_util_tests.c jc_util.o
 
 math_parser_tests: $(TESTS_DIR)/math_parser_tests.c jc_util.o math_parser.o
 	$(CC) $(CFLAGS) -c $(TESTS_DIR)/$@.c  -o $(BUILD_DIR)/$@.o
-	$(CC) $(CFLAGS) $(BUILD_DIR)/math_parser.o $(BUILD_DIR)/jc_util.o $(BUILD_DIR)/$@.o -o $(BUILD_DIR)/$@ -lm
+	$(CC) $(CFLAGS) $(BUILD_DIR)/math_parser.o $(BUILD_DIR)/jc_util.o $(BUILD_DIR)/$@.o $(LFLAGS) -o $(BUILD_DIR)/$@ -lm
 	$(BUILD_DIR)/$@
 
 clean:

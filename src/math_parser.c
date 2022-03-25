@@ -5,6 +5,7 @@
 #include <string.h>
 #include <inttypes.h>
 #include <math.h>
+#include <limits.h>
 
 // ----------------------------------------
 // Set global variables and error functions
@@ -640,7 +641,7 @@ ast_node_t * _parse_tokens_to_ast_tree(lexer_token_list_t * list)
 //        Math Evaluation Functions
 //////////////////////////////////////////////
 
-int _math_eval_recurse(ast_node_t * node)
+int _math_eval_recurse(mpz_t result, ast_node_t * node)
 {
     if (node == NULL || node->type == AST_NODE_T_TYPE_INVALID_TYPE)
     {
@@ -649,36 +650,82 @@ int _math_eval_recurse(ast_node_t * node)
     }
 
     if (node->type == AST_NODE_T_TYPE_NUMBER)
-        return strtoimax(node->str, NULL, 10); // TODO: Detect overflow or underflow
+    {
+        // returns 0 if successful and -1 if error
+        return mpz_set_str(result, node->str, 10);
+    }
+        //return strtoimax(node->str, NULL, 10); // TODO: Detect overflow or underflow
 
     if (node->type == AST_NODE_T_TYPE_MATOP)
     {
+        mpz_t operand_1; // for temporary values for calculation
+        mpz_init(operand_1); // TODO find a way to not reinit every time a calculation is done. Only one init'd variable is needed
+
         switch (node->operation)
         {   // TODO: Detect overflow or underflow
             case PARSER_OPER_ADD:
-                return _math_eval_recurse(node->l_child) + _math_eval_recurse(node->r_child);
-            case PARSER_OPER_SUB:
-                return _math_eval_recurse(node->l_child) - _math_eval_recurse(node->r_child);
-            case PARSER_OPER_MUL:
-                return _math_eval_recurse(node->l_child) * _math_eval_recurse(node->r_child);
-            case PARSER_OPER_DIV:
-                int dividend = _math_eval_recurse(node->l_child);
-                int divisor = _math_eval_recurse(node->r_child);
+                _math_eval_recurse(result, node->l_child);
+                mpz_set(operand_1, result);
+                _math_eval_recurse(result, node->r_child); // result holds the second value we need
 
-                if (divisor == 0)
+                mpz_add(result, operand_1, result); // return 0 if successful, -1 if error
+                return 0;
+                //return _math_eval_recurse(node->l_child) + _math_eval_recurse(node->r_child);
+            case PARSER_OPER_SUB:
+                _math_eval_recurse(result, node->l_child);
+                mpz_set(operand_1, result);
+                _math_eval_recurse(result, node->r_child);
+
+                mpz_sub(result, operand_1, result);
+                return 0;
+            case PARSER_OPER_MUL:
+                _math_eval_recurse(result, node->l_child);
+                mpz_set(operand_1, result);
+                _math_eval_recurse(result, node->r_child);
+
+                mpz_mul(result, operand_1, result);
+                return 0;
+            case PARSER_OPER_DIV:
+                _math_eval_recurse(result, node->l_child);
+                mpz_set(operand_1, result);
+                _math_eval_recurse(result, node->r_child);
+
+                if (mpz_cmp_si(result, 0) == 0)
                 {
                     set_global_err("Error: Attempted divide by 0 encountered");
                     return -424242;
                 }
                 else
                 {
-                    return dividend / divisor;
+                    mpz_tdiv_q(result, operand_1, result);
+                    return 0;
                 }
 
             case PARSER_OPER_MOD:
-                return _math_eval_recurse(node->l_child) % _math_eval_recurse(node->r_child);
+                _math_eval_recurse(result, node->l_child);
+                mpz_set(operand_1, result);
+                _math_eval_recurse(result, node->r_child);
+
+                mpz_mod(result, operand_1, result);
+                return 0;
             case PARSER_OPER_EXP:
-                return pow(_math_eval_recurse(node->l_child), _math_eval_recurse(node->r_child));
+                _math_eval_recurse(result, node->l_child);
+                mpz_set(operand_1, result);
+                _math_eval_recurse(result, node->r_child);
+
+                // if exponent fits inside a signed long
+                if (mpz_fits_slong_p(result))
+                {
+                    long exponent_power = mpz_get_si(result);
+                    mpz_pow_ui(result, operand_1, exponent_power);
+                    return 0;
+                }
+                else
+                {
+                    set_global_err("Error: Attempted to raise number to a power that doesn't fit inside signed long data type");
+                    return -1;
+                }
+                
             default:
                 return -424242;
         }
@@ -822,15 +869,15 @@ parser_hist_entry_t get_hist_entry_by_index(parser_history_t * hist, int hist_nu
 
 
 
-int math_eval(char * str)
+int math_eval(mpz_t result, char * str)
 {
     lexer_token_list_t * list = _tokenize_string(str);
     ast_node_t * tree_head = _parse_tokens_to_ast_tree(list);
     lexer_token_list_t_free(list);
 
-    int computed_result = _math_eval_recurse(tree_head);
+    int error_val = _math_eval_recurse(result, tree_head);
     ast_tree_free(tree_head);
 
-    return computed_result;
+    return error_val;
 }
 

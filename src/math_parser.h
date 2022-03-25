@@ -1,6 +1,11 @@
 #ifndef JOSH_PARSER_HEADER
 #define JOSH_PARSER_HEADER
 
+#include <stdio.h>
+#include <stdlib.h>
+
+#include <gmp.h>
+
 #include "jc_util.h"
 
 typedef enum LEXER_TOKEN_T_TYPES
@@ -169,7 +174,7 @@ bool is_global_err();
 void print_global_err();
 void reset_global_err();
 
-int math_eval(char * str);
+int math_eval(mpz_t result, char * str);
 
 
 #endif
