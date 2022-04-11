@@ -831,7 +831,7 @@ bool iof_exponentiation(iof_num * operand1_and_res, iof_num * operand2)
     }
 }
 
-bool iof_cmp_si(iof_num * operand1, int operand2)
+int iof_cmp_si(iof_num * operand1, int operand2)
 {
     if (operand1->type == IOF_TYPE_INTEGER)
     {
@@ -841,6 +841,18 @@ bool iof_cmp_si(iof_num * operand1, int operand2)
         return mpfr_cmp_si(operand1->num.floating, operand2);
     }
 }
+
+int iof_cmp_d(iof_num * operand1, double operand2)
+{
+    if (operand1->type == IOF_TYPE_INTEGER)
+    {
+        return mpz_cmp_d(operand1->num.integer, operand2);
+    }
+    else {
+        return mpfr_cmp_d(operand1->num.floating, operand2);
+    }
+}
+
 
 bool iof_set_from_str(iof_num * result, char *string)
 {

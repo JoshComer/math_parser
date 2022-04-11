@@ -49,7 +49,7 @@ JC_TEST_FUNC more_history_tests()
 }
 
 
-JC_TEST_FUNC math_tests()
+JC_TEST_FUNC math_tests_int()
 {
     JC_TEST_FUNC_CONSTRUCT()
 
@@ -94,6 +94,23 @@ JC_TEST_FUNC math_tests()
 }
 
 
+JC_TEST_FUNC math_tests_float()
+{
+    JC_TEST_FUNC_CONSTRUCT()
+
+    iof_num _computed_result;
+    iof_num * computed_result = &_computed_result;
+    iof_init_int(computed_result);
+    TEST_ZERO(math_eval(computed_result, "1 / 5"))
+    TEST_ZERO(iof_cmp_d(computed_result, 0.2)) // TODO: test -1 is -1
+    TEST_ZERO(math_eval(computed_result, "1 / 10"))
+    TEST_ZERO(iof_cmp_d(computed_result, 0.1))
+
+    JC_TEST_FUNC_DESTRUCT_AND_RETURN()
+}
+
+
+
 int main(int argc, char * argv[])
 {
     JC_TEST_SET_TESTS_NAME("math_parser_tests")
@@ -101,7 +118,8 @@ int main(int argc, char * argv[])
     CHECK_TESTS(basic_history_tests())
     CHECK_TESTS(more_history_tests())
 
-    CHECK_TESTS(math_tests())
+    CHECK_TESTS(math_tests_int())
+    CHECK_TESTS(math_tests_float())
 
     JC_TEST_PRINT_SUCCESS()
 
