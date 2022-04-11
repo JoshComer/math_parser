@@ -8,6 +8,7 @@
 #include <mpfr.h>
 
 #include "jc_util.h"
+#include "iof_num.h"
 
 typedef enum LEXER_TOKEN_T_TYPES
 {
@@ -123,45 +124,6 @@ void ast_node_t_set_l_child(ast_node_t * parent, ast_node_t * l_child);
 void ast_node_t_set_r_child(ast_node_t * parent, ast_node_t * r_child);
 
 void ast_tree_print(ast_node_t * head);
-
-
-
-// int or float
-typedef union _iof_union {
-	mpz_t integer;
-	mpfr_t floating;
-} _iof_union;
-
-typedef enum iof_type {
-	IOF_TYPE_INTEGER,
-	IOF_TYPE_FLOATING
-} iof_type;
-
-typedef struct iof_num {
-	_iof_union num;
-	iof_type type;
-	bool inited;
-} iof_num;
-
-bool _iof_convert_to_float(iof_num * integer);
-
-bool iof_add(iof_num * operand1, iof_num * operand2);
-bool iof_subtract(iof_num * operand1, iof_num * operand2);
-bool iof_multiply(iof_num * operand1, iof_num * operand2);
-bool iof_divide(iof_num * operand1, iof_num * operand2);
-bool iof_modulus(iof_num * operand1, iof_num * operand2);
-bool iof_exponentiation(iof_num * operand1, iof_num * operand2);
-
-int iof_cmp_si(iof_num * operand1, int operand2);
-int iof_cmp_d(iof_num * operand1, double operand2);
-bool iof_set_from_str(iof_num * result, char * string);
-
-void iof_init_int(iof_num * to_init);
-void iof_reinit_int(iof_num * to_reinit);
-void iof_clear(iof_num * to_clear);
-
-void iof_out_str(iof_num * num);
-
 
 
 
