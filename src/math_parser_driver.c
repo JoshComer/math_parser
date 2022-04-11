@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <gmp.h>
 
 #include "math_parser.h"
@@ -57,10 +58,10 @@ int main(int argc, char * argv[])
         }
         else if (action == EVAL)
         {
-            mpz_t computed_result; // gmp integer type
-            mpz_init(computed_result);
+            iof_num computed_result; // gmp integer type
+            iof_init_int(&computed_result);
 
-            int eval_err = math_eval(computed_result, buffer);
+            int eval_err = math_eval(&computed_result, buffer);
 
             if (is_global_err())
             {
@@ -70,7 +71,8 @@ int main(int argc, char * argv[])
             else
             {
                 parser_history_t_push(hist, buffer, eval_err);
-                mpz_out_str(stdout, 10, computed_result);
+                iof_out_str(&computed_result);
+                //mpz_out_str(stdout, 10, computed_result.num.integer);
                 putchar('\n');
             }
         }

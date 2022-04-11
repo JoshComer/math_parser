@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #include <gmp.h>
+#include <mpfr.h>
 
 #include "jc_util.h"
 
@@ -72,6 +73,8 @@ typedef enum AST_NODE_T_TYPE
 
 	AST_NODE_T_TYPE_MATOP,
     AST_NODE_T_TYPE_NUMBER,
+	//AST_NODE_T_TYPE_INTEGER,
+	//AST_NODE_T_TYPE_FLOATING,
 
 	AST_NODE_T_TYPES_NUM_TYPES
 
@@ -123,6 +126,40 @@ void ast_tree_print(ast_node_t * head);
 
 
 
+// int or float
+typedef union _iof_union {
+	mpz_t integer;
+	mpfr_t floating;
+} _iof_union;
+
+typedef enum iof_type {
+	IOF_TYPE_INTEGER,
+	IOF_TYPE_FLOATING
+} iof_type;
+
+typedef struct iof_num {
+	_iof_union num;
+	iof_type type;
+	bool inited;
+} iof_num;
+
+bool _iof_convert_to_float(iof_num * integer);
+
+bool iof_add(iof_num * operand1, iof_num * operand2);
+bool iof_subtract(iof_num * operand1, iof_num * operand2);
+bool iof_multiply(iof_num * operand1, iof_num * operand2);
+bool iof_divide(iof_num * operand1, iof_num * operand2);
+bool iof_modulus(iof_num * operand1, iof_num * operand2);
+bool iof_exponentiation(iof_num * operand1, iof_num * operand2);
+
+bool iof_cmp_si(iof_num * operand1, int operand2);
+bool iof_set_from_str(iof_num * result, char * string);
+
+void iof_init_int(iof_num * to_init);
+void iof_reinit_int(iof_num * to_reinit);
+void iof_clear(iof_num * to_clear);
+
+void iof_out_str(iof_num * num);
 
 
 
@@ -174,7 +211,7 @@ bool is_global_err();
 void print_global_err();
 void reset_global_err();
 
-int math_eval(mpz_t result, char * str);
+int math_eval(iof_num * result, char * str);
 
 
 #endif

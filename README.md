@@ -9,7 +9,9 @@ A simple math parser written in C which supports arbitrarily sized integers. It'
 I don't anticipate working too much on this project specifically, but that could change
 
 # Dependencies
-Theres a dependency on GMP for integers of arbitrary size. For debian based distros you'll want to install libgmp10 to run the program, and libgmp3-dev for compiling. No info for other distros or OS's, but I'm sure it won't be that hard to figure out how to install GMP (or it might already be installed if on linux)
+There's a dependency on GMP for integers of arbitrary size. For debian based distros you'll want to install libgmp10 to run the program, and libgmp3-dev for compiling. No info for other distros or OS's, but I'm sure it won't be that hard to figure out how to install GMP (or it might already be installed if on linux)
+
+There's also a dependency on MPFR to ensure correct rounding on floating point numbers at the cost of extra speed
 
 # Running
 To compile, simply run 'make'

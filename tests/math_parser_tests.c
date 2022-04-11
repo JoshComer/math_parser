@@ -53,42 +53,42 @@ JC_TEST_FUNC math_tests()
 {
     JC_TEST_FUNC_CONSTRUCT()
 
-    mpz_t computed_result;
-    mpz_init(computed_result);
-
+    iof_num _computed_result;
+    iof_num * computed_result = &_computed_result;
+    iof_init_int(computed_result);
     TEST_ZERO(math_eval(computed_result, "1"))
-    TEST_ZERO(mpz_cmp_si(computed_result, 1)) // TODO: test -1 is -1
+    TEST_ZERO(iof_cmp_si(computed_result, 1)) // TODO: test -1 is -1
     TEST_ZERO(math_eval(computed_result, "0"))
-    TEST_ZERO(mpz_cmp_si(computed_result, 0))
+    TEST_ZERO(iof_cmp_si(computed_result, 0))
     TEST_ZERO(math_eval(computed_result, "1"))
-    TEST_ZERO(mpz_cmp_si(computed_result, 1))
+    TEST_ZERO(iof_cmp_si(computed_result, 1))
 
     TEST_ZERO(math_eval(computed_result, "3 - 2 - 1"))
-    TEST_ZERO(mpz_cmp_si(computed_result, 0))
+    TEST_ZERO(iof_cmp_si(computed_result, 0))
     TEST_ZERO(math_eval(computed_result, "3 * 2 * 1"))
-    TEST_ZERO(mpz_cmp_si(computed_result, 6))
+    TEST_ZERO(iof_cmp_si(computed_result, 6))
     TEST_ZERO(math_eval(computed_result, "3 * 2 - 4"))
-    TEST_ZERO(mpz_cmp_si(computed_result, 2))
+    TEST_ZERO(iof_cmp_si(computed_result, 2))
     TEST_ZERO(math_eval(computed_result, "3 - 2 * 4"))
-    TEST_ZERO(mpz_cmp_si(computed_result, -5))
+    TEST_ZERO(iof_cmp_si(computed_result, -5))
     TEST_ZERO(math_eval(computed_result, "10 / 2 / 5"))
-    TEST_ZERO(mpz_cmp_si(computed_result, 1))
+    TEST_ZERO(iof_cmp_si(computed_result, 1))
     TEST_ZERO(math_eval(computed_result, "2 * (3 - 1)"))
-    TEST_ZERO(mpz_cmp_si(computed_result, 4))
+    TEST_ZERO(iof_cmp_si(computed_result, 4))
     TEST_ZERO(math_eval(computed_result, "3 * 2 ^ 2"))
-    TEST_ZERO(mpz_cmp_si(computed_result, 12))
+    TEST_ZERO(iof_cmp_si(computed_result, 12))
     
     TEST_ZERO(math_eval(computed_result, "2 - 5 * 7 - (3 - 2 - 1) + 2"))
-    TEST_ZERO(mpz_cmp_si(computed_result, -31))
+    TEST_ZERO(iof_cmp_si(computed_result, -31))
     TEST_ZERO(math_eval(computed_result, "5 + 3 * (4 - (3 - 2 - 1))"))
-    TEST_ZERO(mpz_cmp_si(computed_result, 17))
+    TEST_ZERO(iof_cmp_si(computed_result, 17))
 
     TEST_ZERO(math_eval(computed_result, "2^(2^(2^2))"))
-    TEST_ZERO(mpz_cmp_si(computed_result, 65536))
+    TEST_ZERO(iof_cmp_si(computed_result, 65536))
     TEST_ZERO(math_eval(computed_result, "((1 - ((((((((1 + ((((((((((2 + 3))))))))))))))))))))"))
-    TEST_ZERO(mpz_cmp_si(computed_result, -5))
+    TEST_ZERO(iof_cmp_si(computed_result, -5))
     TEST_ZERO(math_eval(computed_result, "1 * 1 * 1 * 1 * 1 * (0 - 1) * 1 * 1 * 1"))
-    TEST_ZERO(mpz_cmp_si(computed_result, -1))
+    TEST_ZERO(iof_cmp_si(computed_result, -1))
 
     JC_TEST_FUNC_DESTRUCT_AND_RETURN()
 }

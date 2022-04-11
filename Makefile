@@ -3,7 +3,7 @@
 CC = gcc
 # no unused parameter suppresses the unused parameter warnings
 CFLAGS = -Wall -Wextra -Wcast-align -g -Wno-unused-parameter
-LFLAGS = -lm -lgmp
+LFLAGS = -lm -lmpfr -lgmp
 SRC_INCLUDE = -Isrc
 
 BUILD_DIR = build
