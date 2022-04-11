@@ -21,7 +21,7 @@ typedef struct jc_test_error{
 #define JC_TEST_SET_TESTS_NAME(string) char const * const _jc_tests_name_magnum_6348 = string;
 #define JC_TEST_PRINT_SUCCESS() printf("All tests passed for %s\n", _jc_tests_name_magnum_6348);
 
- // strncat is used for safe copy of string if it's bigger than the alloted buffer
+ // strncat is used for safe copy of string if it's bigger than the allocated buffer
 #define TEST_TRUE(argument)\
     { \
         int eval_to_int = (argument); \
