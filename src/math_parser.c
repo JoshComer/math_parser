@@ -709,7 +709,7 @@ ast_node_t * _parse_tokens_to_ast_tree(lexer_token_list_t * list)
 	{
         ast_node_t * op = _parse_token_to_ast_node(list);
         if (op == NULL) // right parenthasis encountered. Go back up a recursion level
-            return anchor;
+            return find_tree_head(anchor);
         
         ast_node_t_set_r_child(op, _parse_token_to_ast_node(list));
 
