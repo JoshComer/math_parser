@@ -18,6 +18,7 @@ typedef enum LEXER_TOKEN_T_TYPES
     LEXER_TOKEN_T_MATOP,
     LEXER_TOKEN_T_NUMBER,
     LEXER_TOKEN_T_PAREN,
+	LEXER_TOKEN_T_LABEL,
 
 	LEXER_TOKEN_T_NUM_TOKEN_TYPES,
 	_LEXER_TOKEN_T_TYPE_UPPER_BOUND,
@@ -76,6 +77,7 @@ typedef enum AST_NODE_T_TYPE
     AST_NODE_T_TYPE_NUMBER,
 	//AST_NODE_T_TYPE_INTEGER,
 	//AST_NODE_T_TYPE_FLOATING,
+	AST_NODE_T_TYPE_LABEL,
 
 	AST_NODE_T_TYPES_NUM_TYPES
 
@@ -89,7 +91,8 @@ typedef enum PARSER_OPERATIONS
 	PARSER_OPER_ADD,
 	PARSER_OPER_DIV,
 	PARSER_OPER_MOD,
-    PARSER_OPER_EXP
+    PARSER_OPER_EXP,
+	PARSER_OPER_ASSIGN
 
 } PARSER_OPERATIONS;
 
@@ -156,10 +159,23 @@ parser_hist_entry_t get_hist_entry_by_offset(parser_history_t * hist, int offset
 
 
 
+typedef struct var_label_t {
+	char * name;
+	iof_num * value;
+} var_label_t;
 
+#define LABEL_TABLE_SIZE 30
+typedef struct label_table_t {
+	var_label_t label_list[LABEL_TABLE_SIZE];
+	int size;
+} label_table_t;
 
+var_label_t var_label_t_new_stack(char * string);
 
-
+bool label_table_t_push(var_label_t new_label);
+iof_num * label_table_t_lookup(char * name);
+bool label_table_t_free_label(char * name);
+void print_label_table();
 
 
 

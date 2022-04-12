@@ -32,7 +32,10 @@ void iof_init_int(iof_num * to_init);
 void iof_reinit_int(iof_num * to_reinit);
 void iof_clear(iof_num * to_clear);
 
+void iof_copy_deep(iof_num * copy_to, iof_num * copy_from);
+
 bool _iof_convert_to_float(iof_num * integer);
+void iof_set_precision(mpfr_prec_t precision);
 
 // arithmetic
 bool iof_add(iof_num * operand1, iof_num * operand2);

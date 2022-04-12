@@ -1,11 +1,16 @@
 #include "iof_num.h"
 
+void iof_set_precision(mpfr_prec_t precision)
+{
+    mpfr_set_default_prec(precision);
+}
+
 bool _iof_convert_to_float(iof_num * integer)
 {
     size_t num_digits = mpz_sizeinbase(integer->num.integer, 10);
 
     mpfr_t new_float;
-    mpfr_init2(new_float, num_digits + 10);
+    mpfr_init2(new_float, num_digits + 100);
     // Perform int to float conversion. Return if it can't EXACTLY represent the value in floating
     // todo: change this to allow for inexact conversion
     if (mpfr_set_z(new_float, integer->num.integer, MPFR_RNDN) != 0)
@@ -17,6 +22,35 @@ bool _iof_convert_to_float(iof_num * integer)
     integer->type = IOF_TYPE_FLOATING;
 
     return true;
+}
+
+void iof_copy_deep(iof_num * copy_to, iof_num * copy_from)
+{
+    //if (copy_to == NULL || copy_from == NULL)
+    //    return;
+
+    if (copy_from->type != copy_to->type)
+    {
+        if (copy_to->type == IOF_TYPE_INTEGER)
+            _iof_convert_to_float(copy_to);
+        else
+            _iof_convert_to_float(copy_from);
+    }
+    //printf("deep copying\n");
+
+    if (copy_from->type == IOF_TYPE_INTEGER && copy_from->type == IOF_TYPE_INTEGER)
+    {
+        //gmp_printf("Setting to %Z from %Z\n", copy_to->num.integer, copy_from->num.integer);
+        mpz_set(copy_to->num.integer, copy_from->num.integer);
+        return;
+    }
+    else if (copy_from->type == IOF_TYPE_FLOATING && copy_from->type == IOF_TYPE_FLOATING)
+    {
+        //printf("Floating copy\n");
+        mpfr_set(copy_to->num.floating, copy_from->num.floating, MPFR_RNDN);
+        return;
+    }
+    //printf("end of copying reached\n");
 }
 
 // operand1_and_res - Used as an operand, and is where the result is stored
@@ -264,7 +298,10 @@ void iof_reinit_int(iof_num * to_reinit)
 void iof_out_str(iof_num * num)
 {
     if (num->type == IOF_TYPE_INTEGER)
-        mpz_out_str(stdout, 10, num->num.integer);
+    {
+        if (mpz_out_str(stdout, 10, num->num.integer) == 0)
+            printf("There was an error printing an int\n");
+    }
     else
     {   // check if the floating point can be represented as an integer
         if (mpfr_integer_p(num->num.floating))

@@ -1,4 +1,5 @@
 #include "math_parser.h"
+#include "iof_num.h"
 #include <ctype.h>
 #include <gmp.h>
 #include <stdio.h>
@@ -13,9 +14,51 @@
 // Set global variables and error functions
 // ----------------------------------------
 
+static label_table_t VAR_TABEL = { .size = 0 };
+void print_label_table()
+{
+    printf("Vars\n------------------------\n");
+
+    for (int i = 0; i < VAR_TABEL.size; i++)
+    {
+        var_label_t to_print = VAR_TABEL.label_list[i];
+
+        printf("%d: %s=", i, to_print.name);
+        iof_out_str(to_print.value);
+        putchar('\n');
+    }
+}
+
+bool label_table_t_push(var_label_t new_label)
+{
+    if (VAR_TABEL.size >= LABEL_TABLE_SIZE)
+        return false;
+
+    VAR_TABEL.label_list[VAR_TABEL.size].name = new_label.name;
+    VAR_TABEL.label_list[VAR_TABEL.size].value = new_label.value;
+
+    VAR_TABEL.size++;
+    return true;
+}
+
+iof_num * label_table_t_lookup(char * name)
+{
+    for (int i = 0; i < VAR_TABEL.size; i++)
+    {
+        if (strcmp(VAR_TABEL.label_list[i].name, name) == 0)
+        {
+            return VAR_TABEL.label_list[i].value;
+        }
+    }
+
+    return NULL; // Variable wasn't found
+}
+
 #define _ERR_STR_BUFF_SIZE 101
 int _NUM_ERRS = 0;
 char _ERR_STR[_ERR_STR_BUFF_SIZE];
+
+// TODO: Rethink global err. Probably exit immediately and print error message
 
 void set_global_err(char * err_str)
 {
@@ -258,7 +301,41 @@ lexer_token_t * _parse_token(char * tok)
     }
     else
     {
-        return lexer_token_t_new(LEXER_TOKEN_T_NUMBER, tok);
+        bool letter_found = false;
+        bool number_found = false;
+        bool invalid_char_found = false;
+        int dashes_found = 0;
+        int decimals_found = 0;
+
+        for (int i = 0; i < length; i++)
+        {
+            if (isdigit(tok[i]))
+                number_found = true;
+            else if (isalpha(tok[i]))
+                letter_found = true;
+            else if (tok[i] == '.')
+                decimals_found++;
+            else if (tok[i] == '-')
+                dashes_found++;
+            else
+                invalid_char_found = true;
+        }
+        
+        // invalid. Dashes only allowed at beginning for negative numbers, and only one decimal allowed for floats (but not as last char)
+        if (invalid_char_found == true || dashes_found > 1 || decimals_found > 1 || (dashes_found == 1 && tok[0] != '-') || (decimals_found == 1 && tok[length - 1] == '.'))
+            return lexer_token_t_new(LEXER_TOKEN_T_INVALID_TOKEN, tok);
+        // label for variable
+        else if (letter_found && isalpha(tok[0]) && decimals_found == 0 && dashes_found == 0)
+            return lexer_token_t_new(LEXER_TOKEN_T_LABEL, tok);
+        // different types of possible numbers
+        else if (number_found == true && letter_found == false)
+        {
+            return lexer_token_t_new(LEXER_TOKEN_T_NUMBER, tok);
+        }
+        // default to invalid token
+        else {
+            return lexer_token_t_new(LEXER_TOKEN_T_INVALID_TOKEN, tok);
+        }
     }
 }
 
@@ -471,6 +548,9 @@ void _print_ast_node(ast_node_t * node)
         case AST_NODE_T_TYPE_MATOP:
             strcpy(type_str, "AST_NODE_T_TYPE_MATOP");
             break;
+        case AST_NODE_T_TYPE_LABEL:
+            strcpy(type_str, "AST_NODE_T_TYPE_LABEL");
+            break;
 		default:
 			printf("Invalid node type encountered when printing. Exiting\n");
 			exit(-23478);
@@ -490,7 +570,13 @@ void _ast_tree_print_helper(ast_node_t * node, int depth, int num_spaces)
 		putchar(' ');
 	}
 
-	_print_ast_node(node);
+	if (node == NULL)
+    {
+        printf("NULL\n");
+        return;
+    }
+    
+    _print_ast_node(node);
 
 	if (node->r_child != NULL)	
 		_ast_tree_print_helper(node->r_child, depth + 1, num_spaces);
@@ -568,6 +654,8 @@ ast_node_t * _parse_token_to_ast_node(lexer_token_list_t * list)
             return ast_node_t_new(AST_NODE_T_TYPE_NUMBER, PARSER_INVALID_OPER, check_token->token_str);
         case LEXER_TOKEN_T_MATOP:
             return parse_matop(check_token->token_str);
+        case LEXER_TOKEN_T_LABEL:
+            return ast_node_t_new(AST_NODE_T_TYPE_LABEL, PARSER_OPER_ASSIGN, check_token->token_str);
     }
 
     return NULL;
@@ -580,14 +668,26 @@ ast_node_t * _parse_tokens_to_ast_tree(lexer_token_list_t * list)
     
     // Set up the initial operations to start our tree
     // anchor is the head of the previous node trio which was created
-    ast_node_t * temp = _parse_token_to_ast_node(list);
-    ast_node_t * anchor = _parse_token_to_ast_node(list);
-    
-    if (anchor == NULL) // End of parsing string or ')' was reached. Return everything gotten so far
-        return temp;
-    
-    ast_node_t_set_l_child(anchor, temp);
-    ast_node_t_set_r_child(anchor, _parse_token_to_ast_node(list));
+    ast_node_t * l_node = _parse_token_to_ast_node(list);
+
+    ast_node_t * mid_node = _parse_token_to_ast_node(list);
+    if (mid_node == NULL) // End of parsing string or ')' was reached. Return everything gotten so far
+        return l_node;
+
+    ast_node_t * r_node = _parse_token_to_ast_node(list);
+    if (r_node == NULL) // only two operands. Operand on the right is treated as an operand to the operator on the left (subtraction or assignment)
+    {
+        // set anchor to the child of temp, since the operator is actually the first, not the second token
+        ast_node_t * operation = l_node;
+        ast_node_t_set_l_child(l_node, mid_node);
+
+        return operation;
+    }
+
+    ast_node_t_set_l_child(mid_node, l_node);
+    ast_node_t_set_r_child(mid_node, r_node);
+
+    ast_node_t * anchor = mid_node;// TODO: Remove this line and rethink naming in this function to keep it consistent
 
 	while (list->index < list->size)
 	{
@@ -645,9 +745,15 @@ ast_node_t * _parse_tokens_to_ast_tree(lexer_token_list_t * list)
 
 int _math_eval_recurse(iof_num * result, ast_node_t * node)
 {
-    if (node == NULL || node->type == AST_NODE_T_TYPE_INVALID_TYPE)
+    if (node == NULL)
     {
-        set_global_err("Error: Encountered a NULL node or INVALID AST NODE TYPE when math_eval_recursing");
+        set_global_err("Error: Encountered a NULL node when math_eval_recursing. Printed tree\n");
+        return -424242;
+    }
+    else if (node->type == AST_NODE_T_TYPE_INVALID_TYPE)
+    {
+        set_global_err("\nError: Encountered an INVALID AST NODE TYPE when math_eval_recursing. Printed tree\n\n");
+        ast_tree_print(find_tree_head(node));
         return -424242;
     }
 
@@ -657,8 +763,46 @@ int _math_eval_recurse(iof_num * result, ast_node_t * node)
         return iof_set_from_str(result, node->str);
     }
         //return strtoimax(node->str, NULL, 10); // TODO: Detect overflow or underflow
+    else if (node->type == AST_NODE_T_TYPE_LABEL)
+    {
+        if (node->r_child != NULL)
+        {
+            set_global_err("Error: Assignment to label had two operands");
+            return -424242;
+        }
 
-    if (node->type == AST_NODE_T_TYPE_MATOP)
+        // Wanting to dereference the label
+        if (node->l_child == NULL)
+        {
+            iof_num * temp = label_table_t_lookup(node->str);
+
+            if (temp == NULL)
+            {   // TODO: Fix global error so you can pass in a string to interpolate
+                char temp_err_buf[_ERR_STR_BUFF_SIZE - 1];
+                const char * err_msg = "Error: String could not be found - ";
+                strcpy(temp_err_buf, "Error: String could not be found - ");
+                strncat(temp_err_buf + strlen(err_msg), node->str, _ERR_STR_BUFF_SIZE - strlen(err_msg));
+                set_global_err(temp_err_buf);
+                return -424242;
+            }
+
+            iof_copy_deep(result, temp);
+            return 0;
+        }
+
+        _math_eval_recurse(result, node->l_child);
+
+        // TODO: cleanup the mess of lines below to make it cleaner
+        var_label_t new_label;
+        new_label.name = malloc((strlen(node->str) * sizeof(char)) + sizeof(char));
+        strcpy(new_label.name, node->str);
+        new_label.value = malloc(sizeof(iof_num));
+        iof_init_int(new_label.value);
+        iof_copy_deep(new_label.value, result);
+        label_table_t_push(new_label);
+    }
+
+    else if (node->type == AST_NODE_T_TYPE_MATOP)
     {
         //mpz_t operand_1; // for temporary values for calculation
         //mpz_init(operand_1); // TODO find a way to not reinit every time a calculation is done. Only one init'd variable is needed
@@ -882,7 +1026,7 @@ parser_hist_entry_t get_hist_entry_by_index(parser_history_t * hist, int hist_nu
 
 
 int math_eval(iof_num * result, char * str)
-{
+{    
     lexer_token_list_t * list = _tokenize_string(str);
     ast_node_t * tree_head = _parse_tokens_to_ast_tree(list);
     lexer_token_list_t_free(list);

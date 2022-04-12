@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <gmp.h>
 
+#include "iof_num.h"
 #include "math_parser.h"
 
 
@@ -20,6 +21,7 @@ typedef enum PARSER_ACTION
 {
     NEWLINE,
     HIST,
+    PRINT_VARS,
     EVAL
 } PARSER_ACTION;
 
@@ -30,11 +32,13 @@ PARSER_ACTION get_parser_action(char * input)
         return NEWLINE;
     else if (strcmp(input, "hist\n") == 0)
         return HIST;
+    else if (strcmp(input, "var_print\n") == 0)
+        return PRINT_VARS;
     else
         return EVAL;
 }
 
-
+// TODO: Add tests for variables
 int main(int argc, char * argv[])
 {
     char buffer[MATH_PARSER_INPUT_BUFF_SIZE];
@@ -55,6 +59,10 @@ int main(int argc, char * argv[])
                 parser_hist_entry_t entry = hist->hist_entries[(hist->_start_idx + i) % PARSER_HISTORY_SIZE];
                 printf("%d: %d = %s", hist->last_entry_num - hist->_size_filled + i + 1, entry.computed_result, entry.input_str);
             }
+        }
+        else if (action == PRINT_VARS)
+        {
+            print_label_table();
         }
         else if (action == EVAL)
         {
