@@ -31,8 +31,22 @@ void print_label_table()
 
 bool label_table_t_push(var_label_t new_label)
 {
+    // new_label is passed in with pointers we can steal without copying (shallow copy)
+
     if (VAR_TABEL.size >= LABEL_TABLE_SIZE)
         return false;
+
+    // check if the label already exists
+    for (int i = 0; i < VAR_TABEL.size; i++)
+    {
+        if (strcmp(VAR_TABEL.label_list[i].name, new_label.name) == 0)
+        {
+            iof_clear(VAR_TABEL.label_list[i].value);
+            VAR_TABEL.label_list[i].value = new_label.value;
+            free(new_label.name);
+            return true;
+        }
+    }
 
     VAR_TABEL.label_list[VAR_TABEL.size].name = new_label.name;
     VAR_TABEL.label_list[VAR_TABEL.size].value = new_label.value;
