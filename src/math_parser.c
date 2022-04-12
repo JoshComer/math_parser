@@ -16,6 +16,8 @@
 
 // TODO fix label positioning in file. Maybe remove some stuff to another file? This one is too big imo
 
+int execute_ast_tree(iof_num * result, ast_node_t * tree_head); // TODO - move to header
+
 static label_table_t VAR_TABEL = { .size = 0 };
 void print_label_table()
 {
@@ -23,15 +25,23 @@ void print_label_table()
 
     for (int i = 0; i < VAR_TABEL.size; i++)
     {
-        var_label_t to_print = VAR_TABEL.label_list[i];
+        label_t to_print = VAR_TABEL.label_list[i];
 
         printf("%d: %s=", i, to_print.name);
-        iof_out_str(to_print.value);
+        if (to_print.num_arguments == 0)
+        {
+            iof_num temp;
+            iof_init_int(&temp);
+            execute_ast_tree(&temp, to_print.exec_tree);
+            iof_out_str(&temp);
+        }
+        else
+            printf("This is a function with args");
         putchar('\n');
     }
 }
 
-bool label_table_t_push(var_label_t new_label)
+bool label_table_t_push(label_t new_label)
 {
     // new_label is passed in with pointers we can steal without copying (shallow copy)
 
@@ -43,31 +53,31 @@ bool label_table_t_push(var_label_t new_label)
     {
         if (strcmp(VAR_TABEL.label_list[i].name, new_label.name) == 0)
         {
-            iof_clear(VAR_TABEL.label_list[i].value);
-            VAR_TABEL.label_list[i].value = new_label.value;
+            ast_tree_free(VAR_TABEL.label_list[i].exec_tree);
+            VAR_TABEL.label_list[i].exec_tree = new_label.exec_tree;
             free(new_label.name);
             return true;
         }
     }
 
     VAR_TABEL.label_list[VAR_TABEL.size].name = new_label.name;
-    VAR_TABEL.label_list[VAR_TABEL.size].value = new_label.value;
+    VAR_TABEL.label_list[VAR_TABEL.size].exec_tree = new_label.exec_tree;
 
     VAR_TABEL.size++;
     return true;
 }
 
-iof_num * label_table_t_lookup(char * name)
+int label_table_t_exec(iof_num * result, char * name)
 {
     for (int i = 0; i < VAR_TABEL.size; i++)
     {
         if (strcmp(VAR_TABEL.label_list[i].name, name) == 0)
         {
-            return VAR_TABEL.label_list[i].value;
+            return execute_ast_tree(result, VAR_TABEL.label_list[i].exec_tree);
         }
     }
 
-    return NULL; // Variable wasn't found
+    return -424242; // Variable wasn't found
 }
 
 #define _ERR_STR_BUFF_SIZE 101
@@ -269,7 +279,7 @@ bool lexer_token_list_t_push_and_free_token(lexer_token_list_t * list, lexer_tok
 
 	list->tokens[list->size] = lexer_token_t_new_empty();
 
-	if ( ! lexer_token_t_move(list->tokens[list->size], token))
+    if ( ! lexer_token_t_move(list->tokens[list->size], token))
     {
         return false;
     }
@@ -790,10 +800,11 @@ int _math_eval_recurse(iof_num * result, ast_node_t * node)
         // Wanting to dereference the label
         if (node->l_child == NULL)
         {
-            iof_num * temp = label_table_t_lookup(node->str);
+            int err_val = label_table_t_exec(result, node->str);
 
-            if (temp == NULL)
+            if (err_val != 0)
             {   // TODO: Fix global error so you can pass in a string to interpolate
+                // TODO: Fix this so you can actually tell the difference between "no variable found" and "invalid execution of function"
                 char temp_err_buf[_ERR_STR_BUFF_SIZE - 1];
                 const char * err_msg = "Error: String could not be found - ";
                 strcpy(temp_err_buf, "Error: String could not be found - ");
@@ -802,20 +813,33 @@ int _math_eval_recurse(iof_num * result, ast_node_t * node)
                 return -424242;
             }
 
-            iof_copy_deep(result, temp);
             return 0;
         }
 
-        _math_eval_recurse(result, node->l_child);
+        //_math_eval_recurse(result, node->l_child); was from before code
 
-        // TODO: cleanup the mess of lines below to make it cleaner
-        var_label_t new_label;
+        label_t new_label;
+        new_label.exec_tree = NULL;
         new_label.name = malloc((strlen(node->str) * sizeof(char)) + sizeof(char));
         strcpy(new_label.name, node->str);
-        new_label.value = malloc(sizeof(iof_num));
-        iof_init_int(new_label.value);
-        iof_copy_deep(new_label.value, result);
+
+        // take everything below us in the tree, and assign it to the label
+        new_label.exec_tree = node->l_child;
+        new_label.exec_tree->parent = NULL;
+        node->l_child = NULL;
+
+        _math_eval_recurse(result, new_label.exec_tree); // return the same value assigned to the variable
         label_table_t_push(new_label);
+
+        // TODO: cleanup the mess of lines below to make it cleaner
+        //label_t new_label;
+        //new_label.name = malloc((strlen(node->str) * sizeof(char)) + sizeof(char));
+        //strcpy(new_label.name, node->str);
+        //new_label.value = malloc(sizeof(iof_num));
+        //iof_init_int(new_label.value);
+        //iof_copy_deep(new_label.value, result);
+        //label_table_t_push(new_label);
+
         return 0;
     }
 
@@ -1040,15 +1064,24 @@ parser_hist_entry_t get_hist_entry_by_index(parser_history_t * hist, int hist_nu
 
 
 
-
-
-int math_eval(iof_num * result, char * str)
-{    
+ast_node_t * get_ast_from_text(char * str)
+{
     lexer_token_list_t * list = _tokenize_string(str);
     ast_node_t * tree_head = _parse_tokens_to_ast_tree(list);
     lexer_token_list_t_free(list);
 
-    int error_val = _math_eval_recurse(result, tree_head);
+    return tree_head;
+}
+
+int execute_ast_tree(iof_num * result, ast_node_t * tree_head)
+{
+    return _math_eval_recurse(result, tree_head);
+}
+
+int math_eval(iof_num * result, char * str)
+{
+    ast_node_t * tree_head = get_ast_from_text(str);
+    int error_val = execute_ast_tree(result, tree_head);
     ast_tree_free(tree_head);
 
     return error_val;
