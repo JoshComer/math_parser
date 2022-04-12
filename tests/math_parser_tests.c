@@ -125,18 +125,20 @@ JC_TEST_FUNC math_tests_vars()
     iof_init_int(computed_result);
 
     TEST_ZERO(math_eval(computed_result, "(testingVar (8 + 100 / 2))"))
-    TEST_TRUE(computed_result->type == IOF_TYPE_INTEGER)
-    TEST_ZERO(iof_cmp_si(computed_result, 58))
+    TEST_ZERO(iof_cmp_d(computed_result, 58.0)) // TODO allow for comparing against int or float regardless of the type of the iof parameter
     TEST_ZERO(iof_cmp(computed_result, label_table_t_lookup("testingVar")))
     // test that the number stored in the variable table is stored separately in memory from the result we get
     TEST_FALSE(computed_result == label_table_t_lookup("testingVar"))
     TEST_FALSE(&computed_result->num.integer == &label_table_t_lookup("testingVar")->num.integer)
 
-    //TEST_ZERO(iof_cmp_d(computed_result, 0.2)) // TODO: test -1 is -1
-    //TEST_ZERO(math_eval(computed_result, "1 / 10"))
-    //TEST_ZERO(iof_cmp_d(computed_result, 0.1))
+    TEST_ZERO(math_eval(computed_result, "testingVar (8 + 100 / 2)"))
+    TEST_ZERO(iof_cmp_d(computed_result, 58.0)) // TODO allow for comparing against int or float regardless of the type of the iof parameter
+    TEST_ZERO(iof_cmp(computed_result, label_table_t_lookup("testingVar")))
+    // test that the number stored in the variable table is stored separately in memory from the result we get
+    TEST_FALSE(computed_result == label_table_t_lookup("testingVar"))
+    TEST_FALSE(&computed_result->num.integer == &label_table_t_lookup("testingVar")->num.integer)
 
-    // TODO add functions testing float variable assignments
+    
 
     JC_TEST_FUNC_DESTRUCT_AND_RETURN()
 }
