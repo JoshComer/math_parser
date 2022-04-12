@@ -816,6 +816,7 @@ int _math_eval_recurse(iof_num * result, ast_node_t * node)
         iof_init_int(new_label.value);
         iof_copy_deep(new_label.value, result);
         label_table_t_push(new_label);
+        return 0;
     }
 
     else if (node->type == AST_NODE_T_TYPE_MATOP)

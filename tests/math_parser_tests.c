@@ -98,8 +98,6 @@ JC_TEST_FUNC math_tests_float()
 {
     JC_TEST_FUNC_CONSTRUCT()
 
-    iof_set_precision(100);
-
     // TODO: fix floating point because it's hard
 
     iof_num _computed_result;
@@ -109,6 +107,36 @@ JC_TEST_FUNC math_tests_float()
     //TEST_ZERO(iof_cmp_d(computed_result, 0.2)) // TODO: test -1 is -1
     TEST_ZERO(math_eval(computed_result, "1 / 10"))
     //TEST_ZERO(iof_cmp_d(computed_result, 0.1))
+
+    JC_TEST_FUNC_DESTRUCT_AND_RETURN()
+}
+
+
+JC_TEST_FUNC math_tests_vars()
+{
+    JC_TEST_FUNC_CONSTRUCT()
+
+    iof_set_precision(100);
+
+    // TODO: fix floating point because it's hard
+
+    iof_num _computed_result;
+    iof_num * computed_result = &_computed_result;
+    iof_init_int(computed_result);
+
+    TEST_ZERO(math_eval(computed_result, "(testingVar (8 + 100 / 2))"))
+    TEST_TRUE(computed_result->type == IOF_TYPE_INTEGER)
+    TEST_ZERO(iof_cmp_si(computed_result, 58))
+    TEST_ZERO(iof_cmp(computed_result, label_table_t_lookup("testingVar")))
+    // test that the number stored in the variable table is stored separately in memory from the result we get
+    TEST_FALSE(computed_result == label_table_t_lookup("testingVar"))
+    TEST_FALSE(&computed_result->num.integer == &label_table_t_lookup("testingVar")->num.integer)
+
+    //TEST_ZERO(iof_cmp_d(computed_result, 0.2)) // TODO: test -1 is -1
+    //TEST_ZERO(math_eval(computed_result, "1 / 10"))
+    //TEST_ZERO(iof_cmp_d(computed_result, 0.1))
+
+    // TODO add functions testing float variable assignments
 
     JC_TEST_FUNC_DESTRUCT_AND_RETURN()
 }
@@ -124,6 +152,7 @@ int main(int argc, char * argv[])
 
     CHECK_TESTS(math_tests_int())
     CHECK_TESTS(math_tests_float())
+    CHECK_TESTS(math_tests_vars())
 
     JC_TEST_PRINT_SUCCESS()
 

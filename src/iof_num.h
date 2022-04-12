@@ -46,6 +46,7 @@ bool iof_modulus(iof_num * operand1, iof_num * operand2);
 bool iof_exponentiation(iof_num * operand1, iof_num * operand2);
 
 // comparison
+int iof_cmp(iof_num * operand1, iof_num * operand2);
 int iof_cmp_si(iof_num * operand1, int operand2);
 int iof_cmp_d(iof_num * operand1, double operand2);
 bool iof_set_from_str(iof_num * result, char * string);

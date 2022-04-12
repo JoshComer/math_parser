@@ -1,4 +1,5 @@
 #include "iof_num.h"
+#include <gmp.h>
 
 void iof_set_precision(mpfr_prec_t precision)
 {
@@ -220,6 +221,28 @@ bool iof_exponentiation(iof_num * operand1_and_res, iof_num * operand2)
         mpfr_exp(operand1_and_res->num.floating, operand2->num.floating, MPFR_RNDN);
         return true;
     }
+}
+
+int iof_cmp(iof_num * operand1, iof_num * operand2)
+{
+    // TODO: maybe in the future, test for equality between integer and float, but for now we just return
+    // false if the types are different.
+
+    if (operand1->type == IOF_TYPE_INTEGER && operand2->type == IOF_TYPE_INTEGER)
+    {
+        return mpz_cmp(operand1->num.integer, operand2->num.integer);
+    }
+    else if (operand1->type == IOF_TYPE_FLOATING && operand2->type == IOF_TYPE_FLOATING)
+    {
+        return mpfr_cmp(operand1->num.floating, operand2->num.floating);
+    }
+    
+    if (operand1->type == IOF_TYPE_INTEGER)
+        _iof_convert_to_float(operand1);
+    else if (operand2->type == IOF_TYPE_INTEGER)
+        _iof_convert_to_float(operand1);
+    
+    return mpfr_cmp(operand1->num.floating, operand2->num.floating);
 }
 
 int iof_cmp_si(iof_num * operand1, int operand2)
