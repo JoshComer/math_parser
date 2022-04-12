@@ -14,6 +14,8 @@
 // Set global variables and error functions
 // ----------------------------------------
 
+// TODO fix label positioning in file. Maybe remove some stuff to another file? This one is too big imo
+
 static label_table_t VAR_TABEL = { .size = 0 };
 void print_label_table()
 {
