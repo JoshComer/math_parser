@@ -1,4 +1,5 @@
 #include "../src/math_parser.h"
+#include "../src/history.h"
 #include "jc_test.h"
 
 

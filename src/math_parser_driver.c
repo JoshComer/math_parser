@@ -3,6 +3,7 @@
 
 #include "iof_num.h"
 #include "math_parser.h"
+#include "history.h"
 
 
 void replace_dollars_with_hist_vals(char * str)
