@@ -3,11 +3,15 @@
 A math parser which supports variables, arbitrarily sized integers, and high precision floating point (although the floating point support really sucks right now because floating point is hard).
 
 # Parser Documentation
-Commands:
+Errors
+    Errors which appear to be caused by bugs in the software are prefaced by 'Parser Error:'
+    Errors which appear to be caused by bad input are prefaced by 'Input Error:'
+
+Commands
     To see a history of entered commands, simply enter 'hist'
     To see a list of variables you've assigned (up to 30 spots) enter 'var_print'
 
-Variables:
+Variables
     Valid variable names begin with a letter, and may contain letters or numbers
     
     To assign a number to a variable, type the desired variable name and the number value

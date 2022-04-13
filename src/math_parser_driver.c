@@ -63,7 +63,7 @@ int main(int argc, char * argv[])
         }
         else if (action == PRINT_VARS)
         {
-            print_label_table();
+            print_label_table(get_interpreter_label_table());
         }
         else if (action == EVAL)
         {

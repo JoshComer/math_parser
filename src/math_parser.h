@@ -18,6 +18,7 @@ typedef enum LEXER_TOKEN_T_TYPES
     LEXER_TOKEN_T_MATOP,
     LEXER_TOKEN_T_NUMBER,
     LEXER_TOKEN_T_PAREN,
+	LEXER_TOKEN_T_BRACKET,
 	LEXER_TOKEN_T_LABEL,
 	LEXER_TOKEN_T_KEYWORD,
 	LEXER_TOKEN_T_STATEMENT_END,
@@ -59,6 +60,8 @@ typedef struct lexer_token_list_t{
 
 lexer_token_list_t * lexer_token_list_t_new();
 void lexer_token_list_t_free(lexer_token_list_t * list);
+
+lexer_token_list_t * lexer_token_list_t_tokenize_string(char * str);
 
 bool lexer_token_list_t_push_and_free_token(lexer_token_list_t * list, lexer_token_t * token);
 lexer_token_t * lexer_token_list_t_pop(lexer_token_list_t * list);
@@ -152,13 +155,15 @@ typedef struct label_table_t {
 
 label_t var_label_t_new_stack(char * string);
 
-bool label_table_t_push(label_t new_label);
+bool label_table_t_push(label_table_t * table, label_t new_label);
 //iof_num * label_table_t_lookup(char * name); was before I considered variables and vunctions the same
-label_t * label_table_t_lookup(char * name);
+label_t * label_table_t_lookup(label_table_t * table, char * name);
 int label_t_exec(iof_num * result, label_t * label, void * args);
-int label_table_t_lookup_exec(iof_num * result, char * name, void * args);
+int label_table_t_lookup_exec(iof_num * result, label_table_t * table, char * name, void * args);
 bool label_table_t_free_label(char * name);
-void print_label_table();
+void print_label_table(label_table_t * table);
+
+label_table_t * get_interpreter_label_table();
 
 
 
@@ -169,6 +174,7 @@ void print_label_table();
 
 
 void set_global_err(char * err_str);
+void setf_global_err(char * formatted_err_str, char * insert_from);
 bool is_global_err();
 void print_global_err();
 void reset_global_err();

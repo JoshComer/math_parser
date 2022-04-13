@@ -1,5 +1,6 @@
 #include "math_parser.h"
 #include "iof_num.h"
+#include "jc_util.h"
 #include <ctype.h>
 #include <gmp.h>
 #include <stdio.h>
@@ -18,14 +19,16 @@
 
 int execute_ast_tree(iof_num * result, ast_node_t * tree_head); // TODO - move to header
 
-static label_table_t VAR_TABEL = { .size = 0 };
-void print_label_table()
+static label_table_t GLOBAL_VAR_TABLE = { .size = 0 };
+inline label_table_t * get_interpreter_label_table() { return &GLOBAL_VAR_TABLE; }
+
+void print_label_table(label_table_t * table)
 {
     printf("Vars\n------------------------\n");
 
-    for (int i = 0; i < VAR_TABEL.size; i++)
+    for (int i = 0; i < table->size; i++)
     {
-        label_t to_print = VAR_TABEL.label_list[i];
+        label_t to_print = table->label_list[i];
 
         printf("%d: %s=", i, to_print.name);
         if (to_print.num_arguments == 0)
@@ -41,39 +44,39 @@ void print_label_table()
     }
 }
 
-bool label_table_t_push(label_t new_label)
+bool label_table_t_push(label_table_t * table, label_t new_label)
 {
     // new_label is passed in with pointers we can steal without copying (shallow copy)
 
-    if (VAR_TABEL.size >= LABEL_TABLE_SIZE)
+    if (table->size >= LABEL_TABLE_SIZE)
         return false;
 
     // check if the label already exists
-    for (int i = 0; i < VAR_TABEL.size; i++)
+    for (int i = 0; i < table->size; i++)
     {
-        if (strcmp(VAR_TABEL.label_list[i].name, new_label.name) == 0)
+        if (strcmp(table->label_list[i].name, new_label.name) == 0)
         {
-            ast_tree_free(VAR_TABEL.label_list[i].exec_tree);
-            VAR_TABEL.label_list[i].exec_tree = new_label.exec_tree;
+            ast_tree_free(table->label_list[i].exec_tree);
+            table->label_list[i].exec_tree = new_label.exec_tree;
             free(new_label.name);
             return true;
         }
     }
 
-    VAR_TABEL.label_list[VAR_TABEL.size].name = new_label.name;
-    VAR_TABEL.label_list[VAR_TABEL.size].exec_tree = new_label.exec_tree;
+    table->label_list[table->size].name = new_label.name;
+    table->label_list[table->size].exec_tree = new_label.exec_tree;
 
-    VAR_TABEL.size++;
+    table->size++;
     return true;
 }
 
-label_t * label_table_t_lookup(char * name)
+label_t * label_table_t_lookup(label_table_t * table, char * name)
 {
-    for (int i = 0; i < VAR_TABEL.size; i++)
+    for (int i = 0; i < table->size; i++)
     {
-        if (strcmp(VAR_TABEL.label_list[i].name, name) == 0)
+        if (strcmp(table->label_list[i].name, name) == 0)
         {
-            return &VAR_TABEL.label_list[i];
+            return &table->label_list[i];
         }
     }
 
@@ -90,20 +93,20 @@ int label_t_exec(iof_num * result, label_t * label, void * args)
     return -424242;
 }
 
-int label_table_t_lookup_exec(iof_num * result, char * name, void * args)
+int label_table_t_lookup_exec(iof_num * result, label_table_t * table, char * name, void * args)
 {
-    for (int i = 0; i < VAR_TABEL.size; i++)
+    for (int i = 0; i < table->size; i++)
     {
-        if (strcmp(VAR_TABEL.label_list[i].name, name) == 0)
+        if (strcmp(table->label_list[i].name, name) == 0)
         {
-            return execute_ast_tree(result, VAR_TABEL.label_list[i].exec_tree);
+            return execute_ast_tree(result, table->label_list[i].exec_tree);
         }
     }
 
     return -424242; // Variable wasn't found
 }
 
-#define _ERR_STR_BUFF_SIZE 101
+#define _ERR_STR_BUFF_SIZE 501
 int _NUM_ERRS = 0;
 char _ERR_STR[_ERR_STR_BUFF_SIZE];
 
@@ -377,6 +380,10 @@ lexer_token_t * _parse_token(char * tok)
     {
         return lexer_token_t_new(LEXER_TOKEN_T_PAREN, tok);
     }
+    else if (length == 1 && char_in_list(tok[0], "[]", 2))
+    {
+        return lexer_token_t_new(LEXER_TOKEN_T_BRACKET, tok);
+    }
     else
     {
         bool letter_found = false;
@@ -422,9 +429,9 @@ lexer_token_t * _parse_token(char * tok)
     }
 }
 
-lexer_token_list_t * _tokenize_string(char * str)
+lexer_token_list_t * lexer_token_list_t_tokenize_string(char * str)
 {
-    const char * SEPARATORS  = "+-*/%^()";
+    const char * SEPARATORS  = "+-*/%^()[]";
     const int NUM_SEPARATORS = strlen(SEPARATORS);
 
     if (str == NULL)
@@ -471,44 +478,6 @@ lexer_token_list_t * _tokenize_string(char * str)
 
     return list;
 }
-
-
-
-
-
-
-
-
-
-
-
-/////////////////////////////////////////////////////////////
-//                     Syntax Parser
-/////////////////////////////////////////////////////////////
-
-int check_syntactically_correct(lexer_token_list_t * list)
-{
-    if (list == NULL)
-        return 0;
-
-    for (int i = 0; i < list->size; i++)
-    {
-        lexer_token_t * tok = list->tokens[i];
-
-        switch (tok->type)
-        {
-            case LEXER_TOKEN_T_INVALID_TOKEN:
-            {
-                set_global_err("Error, encountered invalid token");
-                return -424242;
-            }
-        }
-
-    }
-
-    return 0;
-}
-
 
 
 
@@ -893,7 +862,7 @@ int _math_eval_recurse(iof_num * result, ast_node_t * node)
         // Wanting to dereference the label
         if (node->l_child == NULL)
         {
-            label_t * label = label_table_t_lookup(node->str);
+            label_t * label = label_table_t_lookup(get_interpreter_label_table(), node->str);
 
             if (label == NULL)
             {
@@ -923,7 +892,7 @@ int _math_eval_recurse(iof_num * result, ast_node_t * node)
         node->l_child = NULL;
 
         _math_eval_recurse(result, new_label.exec_tree); // return the same value assigned to the variable
-        label_table_t_push(new_label);
+        label_table_t_push(get_interpreter_label_table() ,new_label);
 
         return 0;
     }
@@ -995,7 +964,7 @@ int _math_eval_recurse(iof_num * result, ast_node_t * node)
 
 ast_node_t * get_ast_from_text(char * str)
 {
-    lexer_token_list_t * list = _tokenize_string(str);
+    lexer_token_list_t * list = lexer_token_list_t_tokenize_string(str);
     ast_node_t * tree_head = _parse_tokens_to_ast_tree(list);
     lexer_token_list_t_free(list);
 
