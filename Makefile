@@ -45,7 +45,7 @@ syntax_parser.o: $(SRC_DIR)/syntax_parser.h $(SRC_DIR)/syntax_parser.c math_pars
 # I couldn't figure out how to make visual studio code detect that header
 # files were included from another directory, so I just manually include headers from src
 # for test files for now. Not good, but it works for now...
-tests:	jc_util_tests math_parser_tests
+tests:	jc_util_tests math_parser_tests syntax_parser_tests
 
 jc_util_tests: $(TESTS_DIR)/jc_util_tests.c jc_util.o
 	$(CC) $(CFLAGS) -c $(TESTS_DIR)/$@.c -o $(BUILD_DIR)/$@.o

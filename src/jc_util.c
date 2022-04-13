@@ -1,4 +1,5 @@
 #include "jc_util.h"
+//#include <cstring>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -231,6 +232,20 @@ bool string_list_t_append_null(string_list_t * list)
 	return true;
 }
 
+bool string_list_t_contains(string_list_t * list, char * string)
+{
+	if (list == NULL)
+		return false;
+
+	for (int i = 0; i < list->size; i++)
+	{
+		if (strcmp(list->strings[i], string) == 0)
+			return true;
+	}
+
+	return false;
+}
+
 void string_list_t_print_all(string_list_t * list)
 {
 	printf("Printing String List\n");
@@ -239,6 +254,7 @@ void string_list_t_print_all(string_list_t * list)
 		printf("%d:%s\n", i, list->strings[i]);
 	}
 }
+
 
 
 

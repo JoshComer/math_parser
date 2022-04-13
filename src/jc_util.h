@@ -38,6 +38,8 @@ bool string_list_t_push_copy_from_idxs(string_list_t * list, char const * const 
 bool string_list_t_pop(string_list_t * list);
 bool string_list_t_append_null(string_list_t * list);
 
+bool string_list_t_contains(string_list_t * list, char * string);
+
 void string_list_t_print_all(string_list_t * list);
 
 string_list_t_shallow add_new_shallow_string(string_list_t_shallow list, char * string);

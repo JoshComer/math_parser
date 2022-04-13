@@ -1,4 +1,6 @@
 #include "syntax_parser.h"
+#include "jc_util.h"
+#include "math_parser.h"
 
 /////////////////////////////////////////////////////////////
 //                     Syntax Parser
@@ -108,8 +110,6 @@ bool syntax_function(lexer_token_list_t * list)
 bool syntax_matop(string_list_t * variables, lexer_token_list_t * list)
 {
     lexer_token_t * check_tok = list->tokens[list->index - 1];
-    
-    
 
     if (check_tok->type != LEXER_TOKEN_T_NUMBER)
     {
@@ -117,16 +117,25 @@ bool syntax_matop(string_list_t * variables, lexer_token_list_t * list)
         return false;
     }
             
+    check_tok = list->tokens[list->index];
+    if (check_tok->type != LEXER_TOKEN_T_MATOP)
+    {
+        setf_global_err("Parser Error: Expected a mathmatical operator, but encoutnered %s", check_tok->token_str);
+        return false;
+    }
+
     check_tok = list->tokens[list->index + 1];
     if (check_tok == NULL)
     {
-        set_global_err("Input Error: Expected a token after an operator, but nothing was encountered");
+        setf_global_err("Input Error: Expected a token after operator %s, but nothing was encountered", list->tokens[list->index]->token_str);
     }
-    //else if (check_tok->type != LEXER)
+    else if (check_tok->type != LEXER_TOKEN_T_NUMBER)
+    {
+        setf_global_err("Input Error: Expected a number after operator. Encountered %s", check_tok->token_str);
+        return false;
+    }
 
-
-    // TODO remove this once the function is fixed
-    return false;
+    return true;
 }
 
 bool syntax_number(string_list_t * variables, lexer_token_list_t * list)
@@ -138,15 +147,26 @@ bool syntax_number(string_list_t * variables, lexer_token_list_t * list)
     }
 
     lexer_token_t * tok = list->tokens[list->index];
+    if (tok->type == LEXER_TOKEN_T_LABEL)
+    {
+        // TODO: Check for distinction between functions and variables. Just a function name shouldn't work
+        if (string_list_t_contains(variables, tok->token_str))
+            return true;
+        else
+            return false;
+    }
     if (tok->type != LEXER_TOKEN_T_NUMBER)
     {
         setf_global_err("Parser Error: A non number token was encountered when a number was expected. Encountered %s", tok->token_str);
         return false;
     }
+    
+
 
     list->index++;
     tok = list->tokens[list->index];
 
+    // NULL or ')' indicate the end of an expresssion. A single number is a valid expression
     if (tok == NULL)
         return true;
     else if (tok->type == LEXER_TOKEN_T_PAREN && tok->token_str[0] == ')')
@@ -157,7 +177,7 @@ bool syntax_number(string_list_t * variables, lexer_token_list_t * list)
     }
     else
     {
-        setf_global_err("Input Error: Encountered invalid token after number. Should have encountered end of expression ')' or an operator. Encoutnered %s", tok->token_str);
+        setf_global_err("Input Error: Encountered invalid token after number. Should have encountered end of expression, ')', or an operator. Encoutnered %s", tok->token_str);
         return false;
     }
 }
@@ -241,6 +261,8 @@ int check_syntactically_correct(lexer_token_list_t * list)
         }
     }
     
+    string_list_t * seen_variables = string_list_t_new();
+
     // check validity of different language constructs
     for (list->index = 0; list->index < list->size; list->index++)
     {
@@ -248,12 +270,25 @@ int check_syntactically_correct(lexer_token_list_t * list)
 
         switch (tok->type)
         {
+            case LEXER_TOKEN_T_NUMBER:
+            {
+                if (syntax_number(seen_variables, list) == false)
+                    return -424242;
+                break;
+            }
+            case LEXER_TOKEN_T_MATOP:
+            {
+                if ( syntax_matop(seen_variables, list) == false )
+                    return -424242;
+                break;
+            }
             case LEXER_TOKEN_T_BRACKET:
             {
                 // go back to the beginning of the function definition (the named label before opening bracket) for the syntax function to work properly
                 list->index--;
                 if ( syntax_function(list) == false )
                     return -424242;
+                break;
             }
         }
 
