@@ -1125,9 +1125,6 @@ int execute_ast_tree(iof_num * result, ast_node_t * tree_head)
 
 int math_eval(iof_num * result, char * str)
 {
-    setf_global_err("this is a test :::%s:::", "this was inserted");
-    print_global_err();
-    exit(0);
 
     ast_node_t * tree_head = get_ast_from_text(str);
     int error_val = execute_ast_tree(result, tree_head);
