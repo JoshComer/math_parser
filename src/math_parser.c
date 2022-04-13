@@ -67,7 +67,30 @@ bool label_table_t_push(label_t new_label)
     return true;
 }
 
-int label_table_t_exec(iof_num * result, char * name)
+label_t * label_table_t_lookup(char * name)
+{
+    for (int i = 0; i < VAR_TABEL.size; i++)
+    {
+        if (strcmp(VAR_TABEL.label_list[i].name, name) == 0)
+        {
+            return &VAR_TABEL.label_list[i];
+        }
+    }
+
+    return NULL; // Variable wasn't found
+}
+
+int label_t_exec(iof_num * result, label_t * label, void * args)
+{
+    if (label->num_arguments == 0)
+    {
+        return execute_ast_tree(result, label->exec_tree);
+    }
+
+    return -424242;
+}
+
+int label_table_t_lookup_exec(iof_num * result, char * name, void * args)
 {
     for (int i = 0; i < VAR_TABEL.size; i++)
     {
@@ -96,6 +119,35 @@ void set_global_err(char * err_str)
     // Copy the error string over into global pointer
     strncpy(_ERR_STR, err_str, _ERR_STR_BUFF_SIZE - 1);
     _ERR_STR[_ERR_STR_BUFF_SIZE - 1] = '\0';
+}
+
+void setf_global_err(char * formatted_err_str, char * insert_from)
+{
+    if (formatted_err_str == NULL)
+        return;
+
+    _NUM_ERRS++;
+
+    // copy the error string over into global pointer
+    // stop whenever there's not enough space
+    int insert_to_i = 0;
+    for (int formatted_i = 0; formatted_err_str[formatted_i] != '\0' && insert_to_i < _ERR_STR_BUFF_SIZE - 1; insert_to_i++,formatted_i++)
+    {
+        if (formatted_err_str[formatted_i] == '%' && formatted_err_str[formatted_i + 1] == 's')
+        {
+            for (int insert_from_i = 0;  insert_from[insert_from_i] != '\0' && insert_to_i < _ERR_STR_BUFF_SIZE - 1; insert_to_i++,insert_from_i++)
+            {
+                _ERR_STR[insert_to_i] = insert_from[insert_from_i];
+            }
+
+            insert_to_i --;
+            formatted_i ++;
+        }
+        else {
+            _ERR_STR[insert_to_i] = formatted_err_str[formatted_i];
+        }
+    }
+    _ERR_STR[insert_to_i] = '\0';
 }
 
 bool is_global_err()
@@ -350,9 +402,14 @@ lexer_token_t * _parse_token(char * tok)
         // invalid. Dashes only allowed at beginning for negative numbers, and only one decimal allowed for floats (but not as last char)
         if (invalid_char_found == true || dashes_found > 1 || decimals_found > 1 || (dashes_found == 1 && tok[0] != '-') || (decimals_found == 1 && tok[length - 1] == '.'))
             return lexer_token_t_new(LEXER_TOKEN_T_INVALID_TOKEN, tok);
-        // label for variable
+        // keyword, or label for variable
         else if (letter_found && isalpha(tok[0]) && decimals_found == 0 && dashes_found == 0)
-            return lexer_token_t_new(LEXER_TOKEN_T_LABEL, tok);
+        {
+            if (strcmp(tok, "def") == 0)
+                return lexer_token_t_new(LEXER_TOKEN_T_KEYWORD, tok);
+            else
+                return lexer_token_t_new(LEXER_TOKEN_T_LABEL, tok);
+        }
         // different types of possible numbers
         else if (number_found == true && letter_found == false)
         {
@@ -415,6 +472,42 @@ lexer_token_list_t * _tokenize_string(char * str)
     return list;
 }
 
+
+
+
+
+
+
+
+
+
+
+/////////////////////////////////////////////////////////////
+//                     Syntax Parser
+/////////////////////////////////////////////////////////////
+
+int check_syntactically_correct(lexer_token_list_t * list)
+{
+    if (list == NULL)
+        return 0;
+
+    for (int i = 0; i < list->size; i++)
+    {
+        lexer_token_t * tok = list->tokens[i];
+
+        switch (tok->type)
+        {
+            case LEXER_TOKEN_T_INVALID_TOKEN:
+            {
+                set_global_err("Error, encountered invalid token");
+                return -424242;
+            }
+        }
+
+    }
+
+    return 0;
+}
 
 
 
@@ -788,7 +881,7 @@ int _math_eval_recurse(iof_num * result, ast_node_t * node)
         // returns 0 if successful and -1 if error
         return iof_set_from_str(result, node->str);
     }
-        //return strtoimax(node->str, NULL, 10); // TODO: Detect overflow or underflow
+
     else if (node->type == AST_NODE_T_TYPE_LABEL)
     {
         if (node->r_child != NULL)
@@ -800,23 +893,24 @@ int _math_eval_recurse(iof_num * result, ast_node_t * node)
         // Wanting to dereference the label
         if (node->l_child == NULL)
         {
-            int err_val = label_table_t_exec(result, node->str);
+            label_t * label = label_table_t_lookup(node->str);
+
+            if (label == NULL)
+            {
+                setf_global_err("Error: The function '%s' could not be found. Was it not set earlier?", node->str);
+                return -424242;
+            }
+
+            int err_val = label_t_exec(result, label, NULL);
 
             if (err_val != 0)
-            {   // TODO: Fix global error so you can pass in a string to interpolate
-                // TODO: Fix this so you can actually tell the difference between "no variable found" and "invalid execution of function"
-                char temp_err_buf[_ERR_STR_BUFF_SIZE - 1];
-                const char * err_msg = "Error: String could not be found - ";
-                strcpy(temp_err_buf, "Error: String could not be found - ");
-                strncat(temp_err_buf + strlen(err_msg), node->str, _ERR_STR_BUFF_SIZE - strlen(err_msg));
-                set_global_err(temp_err_buf);
+            {
+                setf_global_err("Error: There was an error executing function '%s'", node->str);
                 return -424242;
             }
 
             return 0;
         }
-
-        //_math_eval_recurse(result, node->l_child); was from before code
 
         label_t new_label;
         new_label.exec_tree = NULL;
@@ -831,97 +925,48 @@ int _math_eval_recurse(iof_num * result, ast_node_t * node)
         _math_eval_recurse(result, new_label.exec_tree); // return the same value assigned to the variable
         label_table_t_push(new_label);
 
-        // TODO: cleanup the mess of lines below to make it cleaner
-        //label_t new_label;
-        //new_label.name = malloc((strlen(node->str) * sizeof(char)) + sizeof(char));
-        //strcpy(new_label.name, node->str);
-        //new_label.value = malloc(sizeof(iof_num));
-        //iof_init_int(new_label.value);
-        //iof_copy_deep(new_label.value, result);
-        //label_table_t_push(new_label);
-
         return 0;
     }
 
     else if (node->type == AST_NODE_T_TYPE_MATOP)
     {
-        //mpz_t operand_1; // for temporary values for calculation
         //mpz_init(operand_1); // TODO find a way to not reinit every time a calculation is done. Only one init'd variable is needed
 
         iof_num operand;
         iof_init_int(&operand);
 
+        // get operands for the operation. Result is operand1, and the variable operand is operand2
+        _math_eval_recurse(result, node->l_child);
+        _math_eval_recurse(&operand, node->r_child);
+
         switch (node->operation)
         {   // TODO: Detect overflow or underflow
             case PARSER_OPER_ADD:
-                _math_eval_recurse(result, node->l_child);
-// above line used result instead of operand               mpz_set(operand_1, result);
-                _math_eval_recurse(&operand, node->r_child); // result holds the second value we need
-
                 iof_add(result, &operand);
-                //mpz_add(result, operand_1, result); // return 0 if successful, -1 if error
                 return 0;
-                //return _math_eval_recurse(node->l_child) + _math_eval_recurse(node->r_child);
             case PARSER_OPER_SUB:
-                _math_eval_recurse(result, node->l_child);
-                //mpz_set(operand_1, result);
-                _math_eval_recurse(&operand, node->r_child);
-
                 iof_subtract(result, &operand);
                 return 0;
             case PARSER_OPER_MUL:
-                _math_eval_recurse(result, node->l_child);
-                //mpz_set(operand_1, result);
-                _math_eval_recurse(&operand, node->r_child);
-
                 iof_multiply(result, &operand);
                 return 0;
             case PARSER_OPER_DIV:
-                _math_eval_recurse(result, node->l_child);
-                //mpz_set(operand_1, result);
-                _math_eval_recurse(&operand, node->r_child);
-
                 if ( ! iof_cmp_si(&operand, 0))
                 {
                     set_global_err("Error: Attempted divide by 0 encountered");
                     return -424242;
                 }
-                //else
-                //{
-                //    mpz_tdiv_q(result, operand_1, result);
-                //    return 0;
-                //}
-                iof_divide(result, &operand);
-                return 0;
-
+                else
+                {
+                    iof_divide(result, &operand);
+                    return 0;
+                }
             case PARSER_OPER_MOD:
-                _math_eval_recurse(result, node->l_child);
-                //mpz_set(operand_1, result);
-                _math_eval_recurse(&operand, node->r_child);
-
                 iof_modulus(result, &operand);
                 return 0;
             case PARSER_OPER_EXP:
-                _math_eval_recurse(result, node->l_child);
-                //mpz_set(operand_1, result);
-                _math_eval_recurse(&operand, node->r_child);
-
-                //// if exponent fits inside a signed long
-                //if (mpz_fits_slong_p(result))
-                //{
-                //    long exponent_power = mpz_get_si(result);
-                //    mpz_pow_ui(result, operand_1, exponent_power);
-                //    return 0;
-                //}
-                //else
-                //{
-                //    set_global_err("Error: Attempted to raise number to a power that doesn't fit inside signed long data type");
-                //    return -1;
-                //}
-
                 iof_exponentiation(result, &operand);
                 return 0;
-                
             default:
                 return -424242;
         }
@@ -1080,6 +1125,10 @@ int execute_ast_tree(iof_num * result, ast_node_t * tree_head)
 
 int math_eval(iof_num * result, char * str)
 {
+    setf_global_err("this is a test :::%s:::", "this was inserted");
+    print_global_err();
+    exit(0);
+
     ast_node_t * tree_head = get_ast_from_text(str);
     int error_val = execute_ast_tree(result, tree_head);
     ast_tree_free(tree_head);

@@ -19,6 +19,7 @@ typedef enum LEXER_TOKEN_T_TYPES
     LEXER_TOKEN_T_NUMBER,
     LEXER_TOKEN_T_PAREN,
 	LEXER_TOKEN_T_LABEL,
+	LEXER_TOKEN_T_KEYWORD,
 	LEXER_TOKEN_T_STATEMENT_END,
 
 	LEXER_TOKEN_T_NUM_TOKEN_TYPES,
@@ -80,6 +81,7 @@ typedef enum AST_NODE_T_TYPE
 	//AST_NODE_T_TYPE_INTEGER,
 	//AST_NODE_T_TYPE_FLOATING,
 	AST_NODE_T_TYPE_LABEL,
+	AST_NODE_T_KEYWORD,
 
 	AST_NODE_T_TYPES_NUM_TYPES
 
@@ -177,7 +179,9 @@ label_t var_label_t_new_stack(char * string);
 
 bool label_table_t_push(label_t new_label);
 //iof_num * label_table_t_lookup(char * name); was before I considered variables and vunctions the same
-int label_table_t_exec(iof_num * result, char * name);
+label_t * label_table_t_lookup(char * name);
+int label_t_exec(iof_num * result, label_t * label, void * args);
+int label_table_t_lookup_exec(iof_num * result, char * name, void * args);
 bool label_table_t_free_label(char * name);
 void print_label_table();
 

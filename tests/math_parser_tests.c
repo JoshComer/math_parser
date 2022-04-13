@@ -130,13 +130,13 @@ JC_TEST_FUNC math_tests_vars()
 
     TEST_ZERO(math_eval(computed_result, "(testingVar (8 + 100 / 2))"))
     TEST_ZERO(iof_cmp_d(computed_result, 58.0)) // TODO allow for comparing against int or float regardless of the type of the iof parameter
-    TEST_ZERO(label_table_t_exec(result_compare, "testingVar"))
+    TEST_ZERO(label_table_t_lookup_exec(result_compare, "testingVar", NULL))
     TEST_ZERO(iof_cmp(computed_result, result_compare))
     iof_reinit_int(result_compare);
 
     TEST_ZERO(math_eval(computed_result, "testingVar (8 + 100 / 2)"))
     TEST_ZERO(iof_cmp_d(computed_result, 58.0)) // TODO allow for comparing against int or float regardless of the type of the iof parameter
-    TEST_ZERO(label_table_t_exec(result_compare, "testingVar"))
+    TEST_ZERO(label_table_t_lookup_exec(result_compare, "testingVar", NULL))
     TEST_ZERO(iof_cmp(computed_result, result_compare))
     iof_reinit_int(result_compare);
 

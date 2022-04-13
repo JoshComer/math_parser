@@ -20,6 +20,9 @@ Variables:
         '6 ^ 8' vs 'six (6); eight 8; six ^ eight'
 
 # TODO
+1. Add an entry in the parsing pipeline between parser and ast generation that checks for correct syntax
+2. Add functions, and the def keyword to define functions. Variables will now be functions with no arguments which return a value
+
 I'll add the ability to create functions, execute many of the TODO's scattered around the code, make some more tests, and clean up the code base. After that I don't anticipate on working on this more, although I may come back and extend it to be a lisp or lisp-like interpreter *shrug*.
 
 # Dependencies
