@@ -3,26 +3,7 @@
 
 
 // these functions take care of memory allocation so we can directly test expressions in one line
-bool test_direct_syntax_number(char * string)
-{
-    lexer_token_list_t * token_list = lexer_token_list_t_tokenize_string(string);
-    bool ret_val = syntax_number(NULL, token_list);
-    free(token_list);
-
-    return ret_val;
-}
-
-bool test_direct_syntax_matop(char * string)
-{
-    lexer_token_list_t * token_list = lexer_token_list_t_tokenize_string(string);
-    token_list->index++; // increment index, because matop anticipates the index pointing to the actual mathematical operator
-    bool ret_val = syntax_matop(NULL, token_list);
-    free(token_list);
-
-    return ret_val;
-}
-
-bool test_direct_check_syntactically_correct(char * string)
+int test_direct_check_syntactically_correct(char * string)
 {
     lexer_token_list_t * token_list = lexer_token_list_t_tokenize_string(string);
     int ret_val = check_syntactically_correct(token_list);
@@ -36,15 +17,14 @@ JC_TEST_FUNC syntax_number_tests()
 {
     JC_TEST_FUNC_CONSTRUCT()
 
-    TEST_TRUE(test_direct_syntax_number("8"))
-    TEST_TRUE(test_direct_syntax_number("99999"))
+    TEST_TRUE(test_direct_check_syntactically_correct("8"))
+    TEST_TRUE(test_direct_check_syntactically_correct("99999"))
 
-    TEST_FALSE(test_direct_syntax_number("a"))
-    TEST_FALSE(test_direct_syntax_number("+"))
-    TEST_FALSE(test_direct_syntax_number(")"))
-    TEST_FALSE(test_direct_syntax_number("("))
-    TEST_FALSE(test_direct_syntax_number("["))
-    TEST_FALSE(test_direct_syntax_number("]"))
+    //TEST_FALSE(test_direct_check_syntactically_correct("+"))
+    //TEST_FALSE(test_direct_check_syntactically_correct(")"))
+    //TEST_FALSE(test_direct_check_syntactically_correct("("))
+    //TEST_FALSE(test_direct_check_syntactically_correct("["))
+    //TEST_FALSE(test_direct_check_syntactically_correct("]"))
 
     // TODO: Add more tests testing labels
     // TODO: Add more tests after adding functions
@@ -58,16 +38,16 @@ JC_TEST_FUNC syntax_matop_tests()
     JC_TEST_FUNC_CONSTRUCT()
 
     // testing for when the number is chained with something else
-    TEST_TRUE(test_direct_syntax_matop("8 + 8"))
-    TEST_TRUE(test_direct_syntax_matop("0 - 0"))
-    TEST_TRUE(test_direct_syntax_matop("3 / 0"))
-    TEST_TRUE(test_direct_syntax_matop("0 * 999999"))
-    TEST_TRUE(test_direct_syntax_matop("0000009 % 0"))
+    TEST_TRUE(test_direct_check_syntactically_correct("8 + 8"))
+    TEST_TRUE(test_direct_check_syntactically_correct("0 - 0"))
+    TEST_TRUE(test_direct_check_syntactically_correct("3 / 0"))
+    TEST_TRUE(test_direct_check_syntactically_correct("0 * 999999"))
+    TEST_TRUE(test_direct_check_syntactically_correct("0000009 % 0"))
     
-    TEST_FALSE(test_direct_syntax_matop("0 - a"))
-    TEST_FALSE(test_direct_syntax_matop("7 8 9"))
-    TEST_FALSE(test_direct_syntax_matop("+ 1 2"))
-    TEST_FALSE(test_direct_syntax_matop("1 2 +"))
+    TEST_FALSE(test_direct_check_syntactically_correct("0 - a"))
+    TEST_FALSE(test_direct_check_syntactically_correct("7 8 9"))
+    TEST_FALSE(test_direct_check_syntactically_correct("+ 1 2"))
+    TEST_FALSE(test_direct_check_syntactically_correct("1 2 +"))
 
     // TODO: Add more tests testing labels
     // TODO: Add more tests after adding functions
@@ -88,8 +68,8 @@ JC_TEST_FUNC syntax_comprehensive_tests()
     TEST_TRUE(test_direct_check_syntactically_correct("8 + 8 + 8"))
     TEST_TRUE(test_direct_check_syntactically_correct("3 - 234565 + 99999 * 0"))
 
-    TEST_TRUE(test_direct_check_syntactically_correct("def seven (9 - 2)"))
-    TEST_TRUE(test_direct_check_syntactically_correct("def seven (def eight 8)"))
+    TEST_TRUE(test_direct_check_syntactically_correct("def int seven (9 - 2)"))
+    TEST_TRUE(test_direct_check_syntactically_correct("def int seven (def int eight 8)"))
 
     TEST_TRUE(test_direct_check_syntactically_correct("(5 + (3 - (def seven (7 + 2))))"))
 

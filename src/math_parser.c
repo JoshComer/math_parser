@@ -370,7 +370,7 @@ void lexer_token_list_t_print_all(lexer_token_list_t * list)
 //////////////////////////////////////////////
 
 lexer_token_t * _parse_token(char * tok)
-{
+{ // TODO: revamp this awfully big function
     int length = strlen(tok);
     if (length == 1 && char_in_list(tok[0], "+-*/%^", 6))
     {
@@ -381,6 +381,10 @@ lexer_token_t * _parse_token(char * tok)
         return lexer_token_t_new(LEXER_TOKEN_T_PAREN, tok);
     }
     else if (length == 1 && char_in_list(tok[0], "[]", 2))
+    {
+        return lexer_token_t_new(LEXER_TOKEN_T_BRACKET, tok);
+    }
+    else if (length == 1 && char_in_list(tok[0], "{}", 2))
     {
         return lexer_token_t_new(LEXER_TOKEN_T_BRACKET, tok);
     }
@@ -414,6 +418,8 @@ lexer_token_t * _parse_token(char * tok)
         {
             if (strcmp(tok, "def") == 0)
                 return lexer_token_t_new(LEXER_TOKEN_T_KEYWORD, tok);
+            else if (strcmp(tok, "int") == 0)
+                return lexer_token_t_new(LEXER_TOKEN_T_TYPE, tok);
             else
                 return lexer_token_t_new(LEXER_TOKEN_T_LABEL, tok);
         }
@@ -431,7 +437,7 @@ lexer_token_t * _parse_token(char * tok)
 
 lexer_token_list_t * lexer_token_list_t_tokenize_string(char * str)
 {
-    const char * SEPARATORS  = "+-*/%^()[]";
+    const char * SEPARATORS  = "+-*/%^()[]{}";
     const int NUM_SEPARATORS = strlen(SEPARATORS);
 
     if (str == NULL)
