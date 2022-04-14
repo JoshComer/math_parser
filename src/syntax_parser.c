@@ -1,6 +1,7 @@
 #include "syntax_parser.h"
 #include "jc_util.h"
 #include "math_parser.h"
+#include <stdlib.h>
 
 /////////////////////////////////////////////////////////////
 //                     Syntax Parser
@@ -223,11 +224,11 @@ bool syntax_number(string_list_t * variables, lexer_token_list_t * list)
     }
 }
 
-bool syntax_keyword(string_list_t * functions, lexer_token_list_t * list)
-{
-    lexer_token_t * tok = list->tokens[list->index];
+ bool syntax_keyword(string_list_t * functions, lexer_token_list_t * list)
+ {
+     lexer_token_t * tok = list->tokens[list->index];
 
-    if ( strcmp(tok->token_str, "def") == 0 )
+     if ( strcmp(tok->token_str, "def") == 0 )
     {
         if ( syntax_label_def(functions, list) == false ) // label can correspond to either function or variable (which is a 0 argument function)
             return false;
@@ -372,3 +373,334 @@ int check_syntactically_correct(lexer_token_list_t * list)
 
     return 0;
 }
+
+
+
+
+
+
+typedef struct func_t {
+    char * name;
+    int num_args;
+    // enum for return type
+} func_t;
+
+
+typedef struct func_list_t {
+    func_t ** funcs;
+    int size;
+    int _funcs_allocated_spots;
+} func_list_t;
+
+
+func_list_t * func_list_t_new()
+{
+	const int initial_size = 1024;
+
+	func_list_t * ret_list = malloc(sizeof(func_list_t));
+	if (ret_list == NULL)
+		return NULL;
+
+	ret_list->funcs = malloc(initial_size * sizeof(func_t *));
+
+	if (ret_list->funcs == NULL)
+	{
+		free(ret_list);
+		return NULL;
+	}
+
+
+	ret_list->size = 0;
+	ret_list->_funcs_allocated_spots = initial_size;
+	return ret_list;
+}
+
+
+void func_list_t_free(func_list_t * list)
+{
+	if (list == NULL)
+		return;
+
+	for (int i = 0; i < list->size; i++)
+		free(list->funcs[i]);
+
+	free(list->funcs);
+}
+
+bool func_list_t_contains(func_list_t * list, char * name)
+{
+	if (list == NULL)
+		return false;
+
+	for (int i = 0; i < list->size; i++)
+	{
+		if (strcmp(list->funcs[i]->name, name) == 0)
+			return true;
+	}
+
+	return false;
+}
+
+func_t * func_list_t_find(func_list_t * list, char * name)
+{
+	if (list == NULL)
+		return NULL;
+
+	for (int i = 0; i < list->size; i++)
+	{
+		if (strcmp(list->funcs[i]->name, name) == 0)
+			return list->funcs[i];
+	}
+
+	return NULL;
+}
+
+bool func_list_t_push_func(func_list_t * list, char * name, int num_args)
+{
+	if (list == NULL || name == NULL || num_args < 0 || list->size >= list->_funcs_allocated_spots)
+		return false;
+
+	int name_size = strlen(name);
+
+	func_t * new_func = malloc(sizeof(func_t *));
+    if ( new_func == NULL ) { return false; }
+
+    new_func->name = malloc((name_size * sizeof(char)) + sizeof(char));
+	if ( new_func->name == NULL )
+    {
+        free(new_func);
+		return false;
+    }
+
+	strcpy(new_func->name, name);
+
+    list->funcs[list->size] = new_func;
+	list->size++;
+
+	return true;
+}
+
+
+
+
+
+bool syntax_def_keyword(func_list_t * functions, lexer_token_list_t * list)
+{
+    lexer_token_t * tok = list->tokens[list->index];
+
+    return ( strcmp(tok->token_str, "def") == 0 );
+}
+
+
+bool get_next_token(lexer_token_t * change, lexer_token_list_t * list)
+{
+    list->index++;
+    change = list->tokens[list->index];
+    return change != NULL;
+}
+
+
+bool is_num(func_list_t * seen_functions, lexer_token_list_t * list)
+{
+    lexer_token_t * tok = list->tokens[list->index];
+
+    if ( tok == NULL )
+        return false;
+
+    return tok->type == LEXER_TOKEN_T_NUMBER;
+}
+
+bool is_seen_name_or_num(func_list_t * seen_functions, lexer_token_list_t * list)
+{
+    if ( list == NULL )
+        return false;
+
+    lexer_token_t * tok = list->tokens[list->index];
+
+    if ( tok == NULL )
+        return false;
+
+    if (tok->type == LEXER_TOKEN_T_NUMBER)
+        return true;
+    else if (tok->type == LEXER_TOKEN_T_LABEL && func_list_t_contains(seen_functions, tok->token_str))
+        return true;
+    else
+        return false;
+}
+
+bool syntax_def_type_label(func_list_t * seen_functions, lexer_token_list_t * list)
+{
+    if ( list == NULL ) { return false; }
+
+    lexer_token_t * tok = list->tokens[list->index];
+    if ( tok == NULL ) { return false; }
+
+    if ( tok->type != LEXER_TOKEN_T_KEYWORD || strcmp(tok->token_str, "def") != 0)
+        return false;
+
+    get_next_token(tok, list);
+    if ( tok == NULL ) { return false; }
+
+    if ( tok->type != LEXER_TOKEN_T_TYPE || strcmp(tok->token_str, "int") != 0 )
+        return false;
+
+    get_next_token(tok, list);
+    if ( tok == NULL ) { return false; }
+
+    if ( tok->type != LEXER_TOKEN_T_LABEL )
+        return false;
+
+    list->index++;
+    return true;
+}
+
+
+
+
+
+string_list_t * syntax_bracket_and_num_args(func_list_t * seen_funcs, lexer_token_list_t * list)
+{
+    if ( list == NULL ) { return false; }
+
+    lexer_token_t * tok = list->tokens[list->index];
+    if ( tok == NULL ) { return false; }
+
+    if ( tok->type != LEXER_TOKEN_T_BRACKET || tok->token_str[0] != '[' )
+        return NULL;
+    
+    // for loop collects the names of arguments
+    // function arguments exist at different scope from our seen variables
+    string_list_t * arguments = string_list_t_new();
+    do {
+        get_next_token(tok, list);
+        if ( tok == NULL ) { return false; }
+
+        string_list_t_push_copy(arguments, tok->token_str);
+    } while ( tok->type != LEXER_TOKEN_T_LABEL);
+
+
+    if ( tok->type != LEXER_TOKEN_T_BRACKET || tok->token_str[0] != ']' )
+        return NULL;
+
+    list->index++;
+    return arguments;
+}
+
+
+
+int syntax_func_def_num_args(func_list_t * seen_funcs, lexer_token_list_t * list)
+{
+    if ( syntax_def_type_label(seen_funcs, list) == false )
+        return -1;
+
+    string_list_t * arguments = syntax_bracket_and_num_args(seen_funcs, list);
+
+    // TODO:
+    // check for a single_val or a parenned expression
+    return -1;
+}
+
+
+bool syntax_operator_func_call(func_list_t * seen_funcs, lexer_token_list_t * list)
+{
+    if ( ! func_list_t_contains(seen_funcs, list->tokens[list->index]->token_str) )
+        return false;
+    
+    // an operator function is just a function which takes two arguments
+    //return syntax_func_def_num_args(seen_funcs, list) == 2;
+    // todo: similar function to the above, except for calling instead of defining, that way we can check that we have seen the labels we are passing in
+    return false;
+}
+
+bool syntax_func_call(func_list_t * seen_funcs, lexer_token_list_t * list)
+{
+    lexer_token_t * tok;
+    if ( ! get_next_token(tok, list) ) { return false; }
+
+    if ( tok->type != LEXER_TOKEN_T_LABEL || ! func_list_t_contains(seen_funcs, tok->token_str) )
+        return false;
+
+
+    func_t * func_to_call = func_list_t_find(seen_funcs, tok->token_str);
+    if ( func_to_call == NULL ) { return false; }
+
+    // no arguments needed if a function takes no arguments
+    if ( (! get_next_token(tok, list)) && func_to_call->num_args == 0 )
+        return true;
+
+    // check for arguments to pass to the function
+    string_list_t * args = syntax_bracket_and_num_args(seen_funcs, list);
+    if (args == NULL) { return false; }
+    for (int i = 0; i < args->size; i++)
+    {
+        func_t * pass_as_arg = func_list_t_find(seen_funcs, args->strings[i]);
+        if (pass_as_arg == NULL || pass_as_arg->num_args != 0) // TODO: Allow for passing functions taking arguments as parameters
+            return false;
+    }
+
+    free(args);
+    return true;
+}
+
+
+bool syntax_func_call_or_def(func_list_t * seen_funcs, lexer_token_list_t * list)
+{
+    lexer_token_t * tok;
+    if ( ! get_next_token(tok, list) ) { return false; }
+
+    if ( syntax_def_keyword(seen_funcs, list) )
+    {
+        list->index--;
+        return syntax_func_def_num_args(seen_funcs, list) != -1;
+    }
+
+    return syntax_func_call(seen_funcs, list);
+}
+
+
+bool second_syntax_parenned_expression(func_list_t * seen_funcs, lexer_token_list_t * list)
+{
+    lexer_token_t * tok;
+    if ( ! get_next_token(tok, list) ) { return false; }
+
+    if ( tok->type == LEXER_TOKEN_T_PAREN && tok->token_str[0] == '(' )
+        return second_syntax_parenned_expression(seen_funcs, list);
+
+    return syntax_func_call_or_def(seen_funcs, list);
+    
+    
+    list->index++;
+    return ( tok->type == LEXER_TOKEN_T_PAREN && tok->token_str[0] == ')' );
+}
+
+
+int check_syntactically_correct_funcs(lexer_token_list_t * list)
+{
+    if (list == NULL || list->index >= list->size)
+        return 0;
+    
+    func_list_t * seen_funcs = func_list_t_new();
+
+    // check validity of different language constructs
+    for (list->index = 0; list->index < list->size; list->index++)
+    {
+        lexer_token_t * tok = list->tokens[list->index];
+
+        switch (tok->type)
+        {
+            case LEXER_TOKEN_T_KEYWORD:
+                if ( ! syntax_def_keyword(seen_funcs, list) )
+                    return -424242;
+        }
+
+    }
+
+    return 0;
+}
+
+
+
+
+
+
+
