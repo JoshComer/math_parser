@@ -219,7 +219,7 @@ bool syntax_operator_func_call(func_list_t * seen_funcs, lexer_token_list_t * li
     //return false;
 }
 
-int syntax_n_arg_func_call(func_list_t * seen_funcs, lexer_token_list_t * list)
+bool syntax_func_call(func_list_t * seen_funcs, lexer_token_list_t * list)
 {
     lexer_token_t * tok;
     if ( ! pop_next_token(&tok, list) ) { return false; }
@@ -250,20 +250,6 @@ int syntax_n_arg_func_call(func_list_t * seen_funcs, lexer_token_list_t * list)
 
     // error if this has been reached
     return -1;
-}
-
-bool syntax_func_call(func_list_t * seen_funcs, lexer_token_list_t * list)
-{
-    lexer_token_t * tok;
-    if ( ! pop_next_token(&tok, list) ) { return false; }
-
-    if ( tok->type == LEXER_TOKEN_T_NUMBER )
-        return true;
-
-    if ( tok->type != LEXER_TOKEN_T_LABEL || ! func_list_t_contains(seen_funcs, tok->token_str) )
-        return false;
-
-    return syntax_n_arg_func_call(seen_funcs, list) >= 0;
 }
 
 
