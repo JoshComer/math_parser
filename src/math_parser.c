@@ -386,7 +386,7 @@ lexer_token_t * _parse_token(char * tok)
     }
     else if (length == 1 && char_in_list(tok[0], "{}", 2))
     {
-        return lexer_token_t_new(LEXER_TOKEN_T_BRACKET, tok);
+        return lexer_token_t_new(LEXER_TOKEN_T_BRACE, tok);
     }
     else
     {

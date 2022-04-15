@@ -68,14 +68,14 @@ JC_TEST_FUNC syntax_comprehensive_tests()
     TEST_TRUE(test_direct_check_syntactically_correct("8 + 8 + 8"))
     TEST_TRUE(test_direct_check_syntactically_correct("3 - 234565 + 99999 * 0"))
 
-    TEST_TRUE(test_direct_check_syntactically_correct("def int seven (9 - 2)"))
-    TEST_TRUE(test_direct_check_syntactically_correct("def int seven (def int eight 8)"))
+    TEST_TRUE(test_direct_check_syntactically_correct("def int seven {9 - 2}"))
+    TEST_TRUE(test_direct_check_syntactically_correct("def int seven {def int eight 8}"))
 
-    TEST_TRUE(test_direct_check_syntactically_correct("(5 + (3 - (def seven (7 + 2))))"))
+    TEST_TRUE(test_direct_check_syntactically_correct("(5 + (3 - (def int seven {7 + 2})))"))
 
 
-    TEST_TRUE(test_direct_check_syntactically_correct("(def func [] (8 + 3)) []"))
-    TEST_FALSE(test_direct_check_syntactically_correct("(func [] (8 + 3)) []"))
+    //TEST_TRUE(test_direct_check_syntactically_correct("(def int func [] {8 + 3}) []"))
+    //TEST_FALSE(test_direct_check_syntactically_correct("(func [] {8 + 3}) []"))
 
 
     JC_TEST_FUNC_DESTRUCT_AND_RETURN()
