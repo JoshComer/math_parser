@@ -7,6 +7,8 @@
 //                     Syntax Parser
 /////////////////////////////////////////////////////////////
 
+jc_stack_t block_stack;
+
 typedef struct func_t {
     char * name;
     int num_args;
@@ -121,6 +123,12 @@ bool syntax_def_keyword(func_list_t * functions, lexer_token_list_t * list)
 }
 
 
+bool is_expression_terminal(lexer_token_t * tok)
+{
+    return ( tok == NULL || tok->token_str[0] == ')' || tok->token_str[0] == ';' || tok->token_str[0] == '}' );
+}
+
+
 bool pop_next_token(lexer_token_t ** change, lexer_token_list_t * list)
 {
     if (change == NULL || list->index >= list->size)
@@ -172,18 +180,18 @@ bool syntax_bracket_and_num_args(func_list_t * arguments, func_list_t * seen_fun
 
     if ( tok->type != LEXER_TOKEN_T_BRACKET || tok->token_str[0] != '[' )
         return false;
+    else
+        pop_next_token(&tok, list);
     
     // for loop collects the names of arguments
     // function arguments exist at different scope from our seen variables
     // TODO: allow for passing of functions which take arguments as parameters
-    do {
-        pop_next_token(&tok, list);
-        if ( tok == NULL ) { return false; }
 
-        
-
-        func_list_t_push_func(arguments, tok->token_str, 0);
-    } while ( tok->type != LEXER_TOKEN_T_LABEL);
+    if ( ! pop_next_token(&tok, list) ) { return false; }
+    while (tok->type == LEXER_TOKEN_T_LABEL) {
+        func_list_t_push_func(arguments, tok->token_str, 0);   
+        if ( ! pop_next_token(&tok, list) ) { return false; }
+    }
 
 
     if ( tok->type != LEXER_TOKEN_T_BRACKET || tok->token_str[0] != ']' )
@@ -275,6 +283,42 @@ find_expression_end:
 }
 
 
+bool syntax_0arg_func_def(func_list_t * seen_funcs, lexer_token_list_t * list)
+{
+    if ( syntax_def_and_type(seen_funcs, list) == false )
+        return false;
+
+    lexer_token_t * tok;
+
+    if ( ! pop_next_token(&tok, list) ) { return false; }
+    if ( tok->type != LEXER_TOKEN_T_LABEL )
+        return false;
+
+    if ( ! pop_next_token(&tok, list) ) { return false; }
+    if ( tok->token_str[0] == '[' )
+    {
+        if ( ! pop_next_token(&tok, list) ) { return false; }
+        if ( tok->token_str[0] != ']')
+            return false;
+
+        pop_next_token(&tok, list);
+    }
+    
+    if ( tok->token_str[0] == '{')
+    {
+        if ( ! syntax_expression(seen_funcs, list) )
+            return false;
+
+        if ( ! pop_next_token(&tok, list) ) { return false; }
+        
+        return ( tok->token_str[0] == '}' );
+    }
+
+    list->index--;
+    return single_val_and_expression_end(seen_funcs, list);
+}
+
+
 bool syntax_func_def(func_list_t * seen_funcs, lexer_token_list_t * list)
 {
     if ( syntax_def_and_type(seen_funcs, list) == false )
@@ -286,35 +330,24 @@ bool syntax_func_def(func_list_t * seen_funcs, lexer_token_list_t * list)
         return false;
 
     func_list_t * func_args = func_list_t_new();
-    if ( ! syntax_bracket_and_num_args(func_args, seen_funcs, list) ) 
+    if ( ! syntax_bracket_and_num_args(func_args, seen_funcs, list) || func_args->size == 0) 
     {
-        if ( func_args != NULL && func_args->size != 0 )
-            return false;
-        // // a func def without brackets is only allowed for 0 argument functions, or variables.
+        while ( strcmp(list->tokens[list->index]->token_str, "def") != 0)
+        {
+            list->index--;
+        }
 
-        // lexer_token_t * tok;
-        // if ( ! pop_next_token(&tok, list) ) { return false; }
-        // if ( tok->type != LEXER_TOKEN_T_LABEL )
-        //     return false;
-
-        // return single_val_and_expression_end(seen_funcs, list);
+        return syntax_0arg_func_def(seen_funcs, list);
     }
-    int num_args = func_args->size;
+    //int num_args = func_args->size;
 
-    if ( ! pop_next_token(&tok, list) ) { return false; }
+    if ( list->index >= list->size )
+        return false;
 
-    // Not having braces for a function definition is only allowed if there is only a single value immediately after the label
+    // Not having braces for a function definition is only allowed for 0 argument functions
     if ( tok->type != LEXER_TOKEN_T_BRACE || tok->token_str[0] != '{')
-    {
-        if ( num_args != 0 )
-            return false;
+        return false;
 
-        list->index--;
-        return single_val_and_expression_end(seen_funcs, list);
-    }
-
-    //if ( ! syntax_func_call_or_def(seen_funcs, list) )
-    //    return false;
     if ( ! syntax_expression(seen_funcs, list) )
         return false;
 
@@ -345,17 +378,13 @@ bool syntax_func_call_or_def(func_list_t * seen_funcs, lexer_token_list_t * list
 }
 
 
-bool syntax_expression(func_list_t * seen_funcs, lexer_token_list_t * list)
+bool syntax_operator_chain(func_list_t * seen_funcs, lexer_token_list_t * list)
 {
-    // TODO: for now an empty expression is invalid. In the future it will be zero
-    if (syntax_func_call_or_def(seen_funcs, list) == false)
-        return false;
 
-    // while loop checks for either, ')' or NULL ending expression, or an operator function chaining the previous function with the next
     lexer_token_t * tok;
     while ( peek_next_token(&tok, list) )
     {
-        if ( tok->token_str[0] == ')' || tok->token_str[0] == '}' )
+        if ( is_expression_terminal(tok) )
             return true;
 
         // check for an operator function chained after this one (like the '+' operator)
@@ -363,8 +392,25 @@ bool syntax_expression(func_list_t * seen_funcs, lexer_token_list_t * list)
             return false;
     }
 
-    // an expression which ends with no chained operators after it is valid
+    // the next token being null is a valid terminal
     return true;
+}
+
+
+bool syntax_expression(func_list_t * seen_funcs, lexer_token_list_t * list)
+{
+    // TODO: for now an empty expression is invalid. In the future it will be zero
+    if (syntax_func_call_or_def(seen_funcs, list) == false)
+        return false;
+
+    lexer_token_t * tok;
+    peek_next_token(&tok, list);
+
+    if ( is_expression_terminal(tok) )
+        return true;
+
+    // if the expression doesn't end, it must be chained with an operator forwards
+    return syntax_operator_chain(seen_funcs, list);
 }
 
 
@@ -397,6 +443,8 @@ int check_syntactically_correct(lexer_token_list_t * list)
     if (list == NULL)
         return -1;
     
+    // internal global stack for all these functions
+    block_stack = jc_stack_t_new();
     func_list_t * seen_funcs = func_list_t_new();
 
     lexer_token_t * tok;
