@@ -48,7 +48,7 @@ language_parser.o: $(SRC_DIR)/syntax_parser.h $(SRC_DIR)/syntax_parser.c math_pa
 # I couldn't figure out how to make visual studio code detect that header
 # files were included from another directory, so I just manually include headers from src
 # for test files for now. Not good, but it works for now...
-tests:	jc_util_tests math_parser_tests language_parser_tests
+tests:	jc_util_tests math_parser_tests 
 #syntax_parser_tests
 
 jc_util_tests: $(TESTS_DIR)/jc_util_tests.c jc_util.o
@@ -60,17 +60,6 @@ math_parser_tests: $(TESTS_DIR)/math_parser_tests.c jc_util.o iof_num.o math_par
 	$(CC) $(CFLAGS) -c $(TESTS_DIR)/$@.c  -o $(BUILD_DIR)/$@.o
 	$(CC) $(CFLAGS) $(BUILD_DIR)/math_parser.o $(BUILD_DIR)/jc_util.o $(BUILD_DIR)/iof_num.o $(BUILD_DIR)/history.o $(BUILD_DIR)/$@.o $(LFLAGS) -o $(BUILD_DIR)/$@ -lm
 	$(BUILD_DIR)/$@
-
-syntax_parser_tests: $(TESTS_DIR)/syntax_parser_tests.c syntax_parser.o math_parser.o iof_num.o
-	$(CC) $(CFLAGS) -c $(TESTS_DIR)/$@.c  -o $(BUILD_DIR)/$@.o
-	$(CC) $(CFLAGS) $(BUILD_DIR)/syntax_parser.o $(BUILD_DIR)/math_parser.o $(BUILD_DIR)/jc_util.o $(BUILD_DIR)/iof_num.o $(BUILD_DIR)/$@.o $(LFLAGS) -o $(BUILD_DIR)/$@
-	$(BUILD_DIR)/$@
-
-language_parser_tests: $(TESTS_DIR)/syntax_parser_tests.c language_parser.o math_parser.o iof_num.o
-	$(CC) $(CFLAGS) -c $(TESTS_DIR)/syntax_parser_tests.c  -o $(BUILD_DIR)/language_parser_tests.o
-	$(CC) $(CFLAGS) $(BUILD_DIR)/language_parser.o $(BUILD_DIR)/math_parser.o $(BUILD_DIR)/jc_util.o $(BUILD_DIR)/iof_num.o $(BUILD_DIR)/$@.o $(LFLAGS) -o $(BUILD_DIR)/$@
-	$(BUILD_DIR)/$@
-
 
 clean:
 	rm -f BIN_DIR/*

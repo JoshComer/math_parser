@@ -12,12 +12,15 @@ JC_TEST_FUNC basic_history_tests()
     for(int i = 1; i < PARSER_HISTORY_SIZE + 1; i++)
     {
         char num_buf[10];
-        parser_history_t_push(hist, itoa(i, num_buf, 10), i);
+        iof_num number;
+        iof_init_set_int(&number, i);
+        parser_history_t_push(hist, itoa(i, num_buf, 10), &number);
     }
 
     for(int i = 1; i < PARSER_HISTORY_SIZE + 1; i++)
     {
-        TEST_TRUE(get_hist_entry_by_index(hist, i).computed_result == i)
+        parser_hist_entry_t hist_entry = get_hist_entry_by_index(hist, i);
+        TEST_ZERO(iof_cmp_si(&hist_entry.computed_result, i))
     }
 
     parser_history_t_free(hist);
@@ -35,13 +38,17 @@ JC_TEST_FUNC more_history_tests()
     for(int i = 1; i < PARSER_HISTORY_SIZE + 6; i++)
     {
         char num_buf[10];
-        parser_history_t_push(hist, itoa(i, num_buf, 10), i);
+        iof_num number;
+        iof_init_set_int(&number, i);
+        parser_history_t_push(hist, itoa(i, num_buf, 10), &number);
     }
 
     for (int i = 6, j = -PARSER_HISTORY_SIZE + 1; i < PARSER_HISTORY_SIZE + 6; i++, j++)
     {
-        TEST_TRUE(get_hist_entry_by_index(hist, i).computed_result == i)
-        TEST_TRUE(get_hist_entry_by_offset(hist, j).computed_result == i)
+        parser_hist_entry_t entry_i = get_hist_entry_by_index(hist, i);
+        parser_hist_entry_t entry_j = get_hist_entry_by_index(hist, j);
+        TEST_ZERO(iof_cmp_si(&entry_i.computed_result, i));
+        TEST_ZERO(iof_cmp(&entry_j.computed_result, &entry_j.computed_result));
     }
 
     parser_history_t_free(hist);

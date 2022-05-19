@@ -29,6 +29,7 @@ typedef struct iof_num {
 
 // object management
 void iof_init_int(iof_num * to_init);
+void iof_init_set_int(iof_num * to_init, int initial_value);
 void iof_reinit_int(iof_num * to_reinit);
 void iof_clear(iof_num * to_clear);
 
@@ -49,9 +50,10 @@ bool iof_exponentiation(iof_num * operand1, iof_num * operand2);
 int iof_cmp(iof_num * operand1, iof_num * operand2);
 int iof_cmp_si(iof_num * operand1, int operand2);
 int iof_cmp_d(iof_num * operand1, double operand2);
-bool iof_set_from_str(iof_num * result, char * string);
 
 // IO
 void iof_out_str(iof_num * num);
+
+bool iof_set_from_str(iof_num * result, char * string);
 
 #endif

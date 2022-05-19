@@ -300,6 +300,13 @@ void iof_init_int(iof_num * result)
     result->inited = true;
 }
 
+void iof_init_set_int(iof_num *to_init, int initial_value)
+{
+    mpz_init_set_si(to_init->num.integer, initial_value);
+    to_init->type = IOF_TYPE_INTEGER;
+    to_init->inited = true;
+}
+
 void iof_clear(iof_num * to_clear)
 {
     if (to_clear->type == IOF_TYPE_INTEGER)

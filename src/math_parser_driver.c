@@ -55,11 +55,7 @@ int main(int argc, char * argv[])
         }
         else if (action == HIST)
         {
-            for(int i = 0; i < hist->_size_filled; i++)
-            {
-                parser_hist_entry_t entry = hist->hist_entries[(hist->_start_idx + i) % PARSER_HISTORY_SIZE];
-                printf("%d: %d = %s", hist->last_entry_num - hist->_size_filled + i + 1, entry.computed_result, entry.input_str);
-            }
+            print_hist(hist);
         }
         else if (action == PRINT_VARS)
         {
@@ -67,7 +63,7 @@ int main(int argc, char * argv[])
         }
         else if (action == EVAL)
         {
-            iof_num computed_result; // gmp integer type
+            iof_num computed_result;
             iof_init_int(&computed_result);
 
             int eval_err = math_eval(&computed_result, buffer);
@@ -79,7 +75,7 @@ int main(int argc, char * argv[])
             }
             else
             {
-                parser_history_t_push(hist, buffer, eval_err);
+                parser_history_t_push(hist, buffer, &computed_result);
                 iof_out_str(&computed_result);
                 //mpz_out_str(stdout, 10, computed_result.num.integer);
                 putchar('\n');
