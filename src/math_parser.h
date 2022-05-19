@@ -160,8 +160,8 @@ label_t var_label_t_new_stack(char * string);
 bool label_table_t_push(label_table_t * table, label_t new_label);
 //iof_num * label_table_t_lookup(char * name); was before I considered variables and vunctions the same
 label_t * label_table_t_lookup(label_table_t * table, char * name);
-int label_t_exec(iof_num * result, label_t * label, void * args);
-int label_table_t_lookup_exec(iof_num * result, label_table_t * table, char * name, void * args);
+int label_t_exec(iof_num * result, label_t * label, void * args, bool debug);
+int label_table_t_lookup_exec(iof_num * result, label_table_t * table, char * name, void * args, bool debug);
 bool label_table_t_free_label(char * name);
 void print_label_table(label_table_t * table);
 
@@ -181,7 +181,7 @@ bool is_global_err();
 void print_global_err();
 void reset_global_err();
 
-int math_eval(iof_num * result, char * str);
+int math_eval(iof_num * result, char * str, bool debug);
 
 
 #endif

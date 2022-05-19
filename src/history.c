@@ -117,6 +117,6 @@ void print_hist(parser_history_t * hist)
         parser_hist_entry_t entry = hist->hist_entries[(hist->_start_idx + i) % PARSER_HISTORY_SIZE];
         printf("%d: ", hist->last_entry_idx - hist->_size_filled + i + 1);
         iof_out_str(&entry.computed_result);
-        printf(" = %s\n", entry.input_str);
+        printf(" = %s", entry.input_str); // input_str contains a newline at the end
     }
 } 

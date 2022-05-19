@@ -42,6 +42,17 @@ PARSER_ACTION get_parser_action(char * input)
 // TODO: Add tests for variables
 int main(int argc, char * argv[])
 {
+    bool debug_arg = false;
+
+    if (argc == 2)
+    {
+        if (strcmp(argv[1], "--debug") == 0)
+        {
+            debug_arg = true;
+        }
+    }
+
+
     char buffer[MATH_PARSER_INPUT_BUFF_SIZE];
     parser_history_t * hist = parser_history_t_new();
 
@@ -66,7 +77,7 @@ int main(int argc, char * argv[])
             iof_num computed_result;
             iof_init_int(&computed_result);
 
-            int eval_err = math_eval(&computed_result, buffer);
+            int eval_err = math_eval(&computed_result, buffer, debug_arg);
 
             if (is_global_err())
             {

@@ -17,7 +17,7 @@
 
 // TODO fix label positioning in file. Maybe remove some stuff to another file? This one is too big imo
 
-int execute_ast_tree(iof_num * result, ast_node_t * tree_head); // TODO - move to header
+int execute_ast_tree(iof_num * result, ast_node_t * tree_head, bool debug); // TODO - move to header
 
 static label_table_t GLOBAL_VAR_TABLE = { .size = 0 };
 inline label_table_t * get_interpreter_label_table() { return &GLOBAL_VAR_TABLE; }
@@ -35,7 +35,7 @@ void print_label_table(label_table_t * table)
         {
             iof_num temp;
             iof_init_int(&temp);
-            execute_ast_tree(&temp, to_print.exec_tree);
+            execute_ast_tree(&temp, to_print.exec_tree, false);
             iof_out_str(&temp);
         }
         else
@@ -83,23 +83,23 @@ label_t * label_table_t_lookup(label_table_t * table, char * name)
     return NULL; // Variable wasn't found
 }
 
-int label_t_exec(iof_num * result, label_t * label, void * args)
+int label_t_exec(iof_num * result, label_t * label, void * args, bool debug)
 {
     if (label->num_arguments == 0)
     {
-        return execute_ast_tree(result, label->exec_tree);
+        return execute_ast_tree(result, label->exec_tree, debug);
     }
 
     return -424242;
 }
 
-int label_table_t_lookup_exec(iof_num * result, label_table_t * table, char * name, void * args)
+int label_table_t_lookup_exec(iof_num * result, label_table_t * table, char * name, void * args, bool debug)
 {
     for (int i = 0; i < table->size; i++)
     {
         if (strcmp(table->label_list[i].name, name) == 0)
         {
-            return execute_ast_tree(result, table->label_list[i].exec_tree);
+            return execute_ast_tree(result, table->label_list[i].exec_tree, debug);
         }
     }
 
@@ -837,8 +837,19 @@ ast_node_t * _parse_tokens_to_ast_tree(lexer_token_list_t * list)
 //        Math Evaluation Functions
 //////////////////////////////////////////////
 
-int _math_eval_recurse(iof_num * result, ast_node_t * node)
+int _math_eval_recurse(iof_num * result, ast_node_t * node, bool debug)
 {
+    if (debug)
+    {
+        if (node == NULL)
+        {
+            printf("Node: is null\n");
+        }
+        else {
+            _print_ast_node(node);
+        }
+    }
+
     if (node == NULL)
     {
         set_global_err("Error: Encountered a NULL node when math_eval_recursing. Printed tree\n");
@@ -876,7 +887,7 @@ int _math_eval_recurse(iof_num * result, ast_node_t * node)
                 return -424242;
             }
 
-            int err_val = label_t_exec(result, label, NULL);
+            int err_val = label_t_exec(result, label, NULL, debug);
 
             if (err_val != 0)
             {
@@ -897,7 +908,7 @@ int _math_eval_recurse(iof_num * result, ast_node_t * node)
         new_label.exec_tree->parent = NULL;
         node->l_child = NULL;
 
-        _math_eval_recurse(result, new_label.exec_tree); // return the same value assigned to the variable
+        _math_eval_recurse(result, new_label.exec_tree, debug); // return the same value assigned to the variable
         label_table_t_push(get_interpreter_label_table() ,new_label);
 
         return 0;
@@ -911,8 +922,8 @@ int _math_eval_recurse(iof_num * result, ast_node_t * node)
         iof_init_int(&operand);
 
         // get operands for the operation. Result is operand1, and the variable operand is operand2
-        _math_eval_recurse(result, node->l_child);
-        _math_eval_recurse(&operand, node->r_child);
+        _math_eval_recurse(result, node->l_child, debug);
+        _math_eval_recurse(&operand, node->r_child, debug);
 
         switch (node->operation)
         {   // TODO: Detect overflow or underflow
@@ -977,16 +988,16 @@ ast_node_t * get_ast_from_text(char * str)
     return tree_head;
 }
 
-int execute_ast_tree(iof_num * result, ast_node_t * tree_head)
+int execute_ast_tree(iof_num * result, ast_node_t * tree_head, bool debug)
 {
-    return _math_eval_recurse(result, tree_head);
+    return _math_eval_recurse(result, tree_head, debug);
 }
 
-int math_eval(iof_num * result, char * str)
+int math_eval(iof_num * result, char * str, bool debug)
 {
 
     ast_node_t * tree_head = get_ast_from_text(str);
-    int error_val = execute_ast_tree(result, tree_head);
+    int error_val = execute_ast_tree(result, tree_head, debug);
     ast_tree_free(tree_head);
 
     return error_val;
